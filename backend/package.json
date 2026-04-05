@@ -1,0 +1,23 @@
+{
+  "name": "rank-ai-backend",
+  "version": "1.0.0",
+  "description": "RANK AI - AI-powered SEO blog generator backend",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "@google-cloud/aiplatform": "^3.10.0",
+    "@google-cloud/firestore": "^7.3.0",
+    "@google-cloud/storage": "^7.7.0",
+    "@google-cloud/vertexai": "^1.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
