@@ -34,3 +34,6 @@ enabled_apis.txt
 hale_apis.txt
 projects.txt
 firestore_check.txt
+
+# Service Account (Security)
+backend/config/

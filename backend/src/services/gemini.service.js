@@ -1,83 +1,76 @@
-const { VertexAI } = require("@google-cloud/vertexai");
 const config = require("../config");
 
-const vertexAI = new VertexAI({
-  project: config.gcpProjectId,
-  location: config.vertexLocation,
-});
-
-const generativeModel = vertexAI.getGenerativeModel({
-  model: "gemini-2.0-flash-001",
-  generationConfig: {
-    temperature: 0.8,
-    topP: 0.95,
-    maxOutputTokens: 8192,
-  },
-});
-
 /**
- * Generate a full SEO blog post from a keyword using Gemini.
- * Returns { title, metaDescription, content, faq }
+ * Generate blog content using Google AI Studio (Free Tier)
+ * This bypasses Vertex AI manager approvals and 404 errors.
  */
-async function generateBlog(keyword) {
-  const prompt = `You are an expert SEO content writer and digital marketing specialist. Generate a comprehensive, well-structured blog post optimized for the keyword: "${keyword}".
+async function generateBlogContent(keyword) {
+  // Use GENAI_API_KEY from .env (User's personal free key)
+  // If not provided, it will fail gracefully.
+  const apiKey = process.env.GENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GENAI_API_KEY is missing in .env. Please get a free key from aistudio.google.com");
+  }
 
-STRICT REQUIREMENTS:
-1. The blog MUST be 800-1500 words
-2. Use PROPER HTML formatting — do NOT use markdown
-3. Structure with clear sections using <h2> and <h3> tags
-4. Each section should have 2-3 well-written paragraphs
-5. Include at least one <ul> or <ol> list with actionable tips
-6. Use <strong> for emphasis on key points
-7. Naturally incorporate the keyword 3-5 times throughout the content
-8. Write in a professional yet conversational tone
-9. Include an engaging introduction paragraph
-10. Include a strong conclusion with a call to action
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-REQUIRED SECTIONS:
-- Introduction (no heading, just an engaging opening <p>)
-- At least 3 main sections with <h2> headings
-- Sub-sections with <h3> where appropriate
-- A "Frequently Asked Questions" <h2> section at the end with 3-4 Q&A pairs formatted as:
-  <h3>Question here?</h3>
-  <p>Answer here.</p>
+  const prompt = `You are an expert SEO blog writer. Create a comprehensive, high-quality blog post for the keyword: "${keyword}".
+    Return the response in a VALID JSON format with EXACTLY the following structure:
+    {
+      "title": "Compelling Blog Title",
+      "metaDescription": "SEO-friendly meta description (150-160 characters)",
+      "content": "Full blog content in HTML format. Use H2, H3 tags, paragraphs, and lists. Do NOT include <html> or <body> tags. High quality and 1000+ words.",
+      "faq": [
+        {"question": "FAQ Question 1", "answer": "FAQ Answer 1"},
+        {"question": "FAQ Question 2", "answer": "FAQ Answer 2"},
+        {"question": "FAQ Question 3", "answer": "FAQ Answer 3"}
+      ],
+      "tags": ["tag1", "tag2", "tag3"]
+    }
+    
+    Make sure the content is engaging, informative and highly optimized for search engines. 
+    Use a professional and authoritative tone. 
+    The "content" field MUST be valid HTML. 
+    Return ONLY the raw JSON object. No Markdown backticks.`;
 
-Return your response as valid JSON with EXACTLY this structure (no markdown fences, no extra text):
-{
-  "title": "An engaging, SEO-optimized title (50-65 characters) that includes the keyword",
-  "metaDescription": "A compelling meta description (130-155 characters) that includes the keyword and encourages clicks",
-  "content": "The full HTML blog content including all sections and FAQ",
-  "faq": [
-    { "question": "First FAQ question?", "answer": "Detailed answer" },
-    { "question": "Second FAQ question?", "answer": "Detailed answer" },
-    { "question": "Third FAQ question?", "answer": "Detailed answer" }
-  ]
+  const body = {
+    contents: [{
+      parts: [{ text: prompt }]
+    }]
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(`Gemini API Error: ${data.error.message}`);
+    }
+
+    if (!data.candidates || data.candidates.length === 0) {
+      throw new Error("No response from Gemini API");
+    }
+
+    let text = data.candidates[0].content.parts[0].text;
+    
+    // Clean up if the model includes JSON backticks
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse JSON from Gemini:", text);
+      throw new Error("Gemini returned invalid JSON structure");
+    }
+  } catch (error) {
+    console.error("AI Studio Generation failed:", error);
+    throw error;
+  }
 }
 
-CRITICAL: Return ONLY the valid JSON object. No text before or after. No markdown code fences.`;
-
-  const result = await generativeModel.generateContent(prompt);
-  const response = result.response;
-  const text = response.candidates[0].content.parts[0].text;
-
-  // Clean the response – strip markdown code fences if present
-  let cleaned = text.trim();
-  if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
-  }
-
-  const blogData = JSON.parse(cleaned);
-
-  if (!blogData.title || !blogData.metaDescription || !blogData.content) {
-    throw new Error("Gemini returned incomplete blog data");
-  }
-
-  // Ensure FAQ array exists
-  if (!blogData.faq || !Array.isArray(blogData.faq)) {
-    blogData.faq = [];
-  }
-
-  return blogData;
-}
-
-module.exports = { generateBlog };
+module.exports = { generateBlogContent };

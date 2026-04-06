@@ -37,8 +37,8 @@ router.post("/generate-blog", validateKeyword, async (req, res) => {
       imageUrl = await uploadImage(imageBuffer, blogData.title);
       console.log(`[generate-blog] Image uploaded: ${imageUrl}`);
     } catch (imgError) {
-      console.warn("[generate-blog] Image generation/upload failed, continuing without image:", imgError.message);
-      imageUrl = "";
+      console.warn("[generate-blog] Image generation/upload failed, using premium placeholder:", imgError.message);
+      imageUrl = "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=2070&auto=format&fit=crop";
     }
 
     // Step 4: Calculate SEO score

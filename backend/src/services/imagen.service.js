@@ -10,7 +10,7 @@ const predictionClient = new PredictionServiceClient({
  * Returns a Buffer of the generated PNG image.
  */
 async function generateImage(blogTitle) {
-  const endpoint = `projects/${config.gcpProjectId}/locations/${config.vertexLocation}/publishers/google/models/imagen-3.0-generate-002`;
+  const endpoint = `projects/${config.gcpProjectId}/locations/${config.vertexLocation}/publishers/google/models/imagegeneration@006`;
 
   const prompt = `Create a professional, modern blog header image for an article titled: "${blogTitle}". 
 Requirements:
