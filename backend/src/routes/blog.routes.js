@@ -4,7 +4,7 @@ const router = express.Router();
 const { generateBlog } = require("../services/gemini.service");
 const { generateImage } = require("../services/imagen.service");
 const { uploadImage } = require("../services/storage.service");
-const { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getBlogByKeyword, getAllSlugs } = require("../services/firestore.service");
+const { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getBlogByKeyword, getAllSlugs, searchBlogs } = require("../services/firestore.service");
 const { calculateSeoScore } = require("../utils/seo");
 const { generateUniqueSlug } = require("../utils/slug");
 const { validateKeyword, validateTitle, validateId } = require("../middleware/validate");
@@ -122,11 +122,19 @@ router.post("/generate-image", validateTitle, async (req, res) => {
 
 /**
  * GET /api/blogs
- * Fetch all blogs
+ * Fetch all blogs or search blogs by query parameter
  */
 router.get("/blogs", async (req, res) => {
   try {
-    const blogs = await getAllBlogs();
+    const { search } = req.query;
+    let blogs;
+    
+    if (search) {
+      blogs = await searchBlogs(search);
+    } else {
+      blogs = await getAllBlogs();
+    }
+    
     return res.status(200).json({
       success: true,
       data: blogs,

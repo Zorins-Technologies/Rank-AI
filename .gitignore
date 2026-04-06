@@ -35,5 +35,13 @@ hale_apis.txt
 projects.txt
 firestore_check.txt
 
-# Service Account (Security)
-backend/config/
+# Service Account Files (Security - NEVER commit these!)
+*.json
+!package.json
+!package-lock.json
+backend/src/config/service-account.json
+backend/config/service-account.json
+gsk/service-account.json
+service-account.json
+temp-credentials.json
+backend/temp-credentials.json

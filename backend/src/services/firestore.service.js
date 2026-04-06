@@ -145,4 +145,24 @@ async function getAllSlugs() {
   return snapshot.docs.map((doc) => doc.data().slug).filter(Boolean);
 }
 
-module.exports = { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getBlogByKeyword, getAllSlugs };
+/**
+ * Search blogs by title or keyword (case-insensitive partial match).
+ */
+async function searchBlogs(searchTerm) {
+  if (!searchTerm || searchTerm.trim() === '') {
+    return getAllBlogs();
+  }
+
+  const term = searchTerm.toLowerCase().trim();
+  
+  // Get all blogs and filter client-side since Firestore doesn't support partial text search
+  const allBlogs = await getAllBlogs();
+  
+  return allBlogs.filter(blog => 
+    blog.title.toLowerCase().includes(term) || 
+    blog.keyword.toLowerCase().includes(term) ||
+    (blog.metaDescription && blog.metaDescription.toLowerCase().includes(term))
+  );
+}
+
+module.exports = { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getBlogByKeyword, getAllSlugs, searchBlogs };

@@ -1,25 +1,45 @@
 const path = require("path");
 const dotenv = require("dotenv");
+const fs = require("fs");
 
 // Load .env from the backend root directory (one level up from src)
-// This ensures that GOOGLE_APPLICATION_CREDENTIALS is loaded before SDKs are initialized
 dotenv.config({ path: path.join(__dirname, "../../.env") });
 
 const config = {
-  gcpProjectId: process.env.GCP_PROJECT_ID,
+  gcpProjectId: process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT,
   gcsBucketName: process.env.GCS_BUCKET_NAME,
   vertexLocation: process.env.VERTEX_LOCATION || "us-central1",
   port: process.env.PORT || 8000,
-  googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   genaiApiKey: process.env.GENAI_API_KEY,
 };
 
-// Also set it in process.env explicitly for Google Cloud SDKs to pick up
-if (config.googleApplicationCredentials) {
+// Set up Google Cloud credentials from environment variables
+if (process.env.GOOGLE_CLOUD_PRIVATE_KEY && process.env.GOOGLE_CLOUD_CLIENT_EMAIL) {
+  const credentials = {
+    type: process.env.GOOGLE_CLOUD_TYPE || "service_account",
+    project_id: config.gcpProjectId,
+    private_key_id: process.env.GOOGLE_CLOUD_PRIVATE_KEY_ID,
+    private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
+    client_id: process.env.GOOGLE_CLOUD_CLIENT_ID,
+    auth_uri: process.env.GOOGLE_CLOUD_AUTH_URI || "https://accounts.google.com/o/oauth2/auth",
+    token_uri: process.env.GOOGLE_CLOUD_TOKEN_URI || "https://oauth2.googleapis.com/token",
+    auth_provider_x509_cert_url: process.env.GOOGLE_CLOUD_AUTH_PROVIDER_X509_CERT_URL || "https://www.googleapis.com/oauth2/v1/certs",
+  };
+
+  // Set the credentials for Google Cloud SDKs
+  process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify(credentials);
+  
+  // Also create a temporary file as fallback
+  const tempCredsPath = path.join(require('os').tmpdir(), 'rank-ai-credentials.json');
+  fs.writeFileSync(tempCredsPath, JSON.stringify(credentials, null, 2));
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = tempCredsPath;
+} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  // Fallback to file-based credentials if specified
   process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve(
     __dirname,
     "../../",
-    config.googleApplicationCredentials
+    process.env.GOOGLE_APPLICATION_CREDENTIALS
   );
 }
 

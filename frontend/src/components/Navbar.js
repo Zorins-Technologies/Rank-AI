@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 
 const navItems = [
@@ -13,12 +14,16 @@ export default function Navbar() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 z-50 glass-card border-b border-dark-400/20 border-t-0 border-x-0 rounded-none backdrop-blur-2xl">
+    <motion.nav
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="sticky top-0 z-50 glass-card border-b border-white/10 backdrop-blur-3xl"
+    >
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center shadow-lg shadow-brand-600/30 group-hover:shadow-brand-500/50 transition-shadow">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center shadow-lg shadow-brand-600/30 group-hover:shadow-brand-500/50 transition-shadow">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
               </svg>
@@ -26,7 +31,6 @@ export default function Navbar() {
             <span className="text-xl font-bold gradient-text">RANK AI</span>
           </Link>
 
-          {/* Nav links */}
           <div className="flex items-center gap-1">
             {navItems.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href;
@@ -34,10 +38,10 @@ export default function Navbar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                     isActive
                       ? "bg-brand-600/15 text-brand-400"
-                      : "text-dark-100 hover:text-white hover:bg-dark-500/50"
+                      : "text-slate-200 hover:text-white hover:bg-slate-800/70"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -48,7 +52,7 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-    </nav>
+    </motion.nav>
   );
 }
 
