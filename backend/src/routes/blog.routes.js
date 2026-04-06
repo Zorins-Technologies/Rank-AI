@@ -4,7 +4,7 @@ const router = express.Router();
 const { generateBlog } = require("../services/gemini.service");
 const { generateImage } = require("../services/imagen.service");
 const { uploadImage } = require("../services/storage.service");
-const { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getAllSlugs } = require("../services/firestore.service");
+const { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getBlogByKeyword, getAllSlugs } = require("../services/firestore.service");
 const { calculateSeoScore } = require("../utils/seo");
 const { generateUniqueSlug } = require("../utils/slug");
 const { validateKeyword, validateTitle, validateId } = require("../middleware/validate");
@@ -19,6 +19,19 @@ router.post("/generate-blog", validateKeyword, async (req, res) => {
     const trimmedKeyword = keyword.trim();
 
     console.log(`[generate-blog] Starting pipeline for keyword: "${trimmedKeyword}"`);
+    
+    // SMART CACHE: Check if we already have a blog for this exact keyword
+    console.log("[generate-blog] Step 0: Checking Smart Cache (Firestore)...");
+    const cachedBlog = await getBlogByKeyword(trimmedKeyword);
+    if (cachedBlog) {
+      console.log(`[generate-blog] Smart Cache HIT! Returning blog with ID: ${cachedBlog.id}`);
+      return res.status(200).json({
+        success: true,
+        data: cachedBlog,
+        source: "Smart-Cache"
+      });
+    }
+    console.log("[generate-blog] Smart Cache MISS. Proceeding with generation.");
 
     // Step 1: Generate blog content with Gemini
     console.log("[generate-blog] Step 1: Generating blog with Gemini...");

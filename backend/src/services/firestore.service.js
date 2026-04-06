@@ -96,6 +96,32 @@ async function getBlogBySlug(slug) {
 }
 
 /**
+ * Fetch a single blog by keyword.
+ * This is used for the smart caching layer.
+ */
+async function getBlogByKeyword(keyword) {
+  const snapshot = await blogsCollection
+    .where("keyword", "==", keyword.toLowerCase())
+    .orderBy("createdAt", "desc")
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const doc = snapshot.docs[0];
+  const data = doc.data();
+  return {
+    id: doc.id,
+    ...data,
+    createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null,
+    updatedAt: data.updatedAt ? data.updatedAt.toDate().toISOString() : null,
+    source: "Cloud-Cache"
+  };
+}
+
+/**
  * Check if a blog with the same keyword was generated recently (within last hour).
  * Prevents duplicate generation.
  */
@@ -119,4 +145,4 @@ async function getAllSlugs() {
   return snapshot.docs.map((doc) => doc.data().slug).filter(Boolean);
 }
 
-module.exports = { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getAllSlugs };
+module.exports = { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getBlogByKeyword, getAllSlugs };

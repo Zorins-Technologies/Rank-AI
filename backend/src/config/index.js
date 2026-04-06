@@ -11,6 +11,7 @@ const config = {
   vertexLocation: process.env.VERTEX_LOCATION || "us-central1",
   port: process.env.PORT || 8000,
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  genaiApiKey: process.env.GENAI_API_KEY,
 };
 
 // Also set it in process.env explicitly for Google Cloud SDKs to pick up

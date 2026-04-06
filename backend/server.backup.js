@@ -1,3 +1,4 @@
+require("dotenv").config({ path: "c:\\Users\\Mir Faisal Ali\\Desktop\\faisal\\Rank AI\\backend\\.env" });
 const express = require("express");
 const cors = require("cors");
 const config = require("./config");
