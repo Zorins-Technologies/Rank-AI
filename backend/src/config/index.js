@@ -6,12 +6,28 @@ const fs = require("fs");
 dotenv.config({ path: path.join(__dirname, "../../.env") });
 
 const config = {
+  env: process.env.NODE_ENV || "development",
   gcpProjectId: process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT,
   gcsBucketName: process.env.GCS_BUCKET_NAME,
   vertexLocation: process.env.VERTEX_LOCATION || "us-central1",
   port: process.env.PORT || 8000,
   genaiApiKey: process.env.GENAI_API_KEY,
 };
+
+// Validation for required environment variables
+const requiredEnvVars = [
+  'GCP_PROJECT_ID',
+  'GCS_BUCKET_NAME',
+  'GOOGLE_CLOUD_PRIVATE_KEY',
+  'GOOGLE_CLOUD_CLIENT_EMAIL'
+];
+
+const missingVars = requiredEnvVars.filter(v => !process.env[v] && !config[v]);
+
+if (missingVars.length > 0) {
+  console.warn("\x1b[33m%s\x1b[0m", `[CONFIG WARNING] Missing environment variables: ${missingVars.join(', ')}`);
+  console.warn("\x1b[33m%s\x1b[0m", "Please check your .env file or production environment settings.");
+}
 
 // Set up Google Cloud credentials from environment variables
 if (process.env.GOOGLE_CLOUD_PRIVATE_KEY && process.env.GOOGLE_CLOUD_CLIENT_EMAIL) {
@@ -30,9 +46,9 @@ if (process.env.GOOGLE_CLOUD_PRIVATE_KEY && process.env.GOOGLE_CLOUD_CLIENT_EMAI
   // Set the credentials for Google Cloud SDKs
   process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify(credentials);
   
-  // Also create a temporary file as fallback
+  // Also create a temporary file as fallback (restrict permissions for security)
   const tempCredsPath = path.join(require('os').tmpdir(), 'rank-ai-credentials.json');
-  fs.writeFileSync(tempCredsPath, JSON.stringify(credentials, null, 2));
+  fs.writeFileSync(tempCredsPath, JSON.stringify(credentials, null, 2), { mode: 0o600 });
   process.env.GOOGLE_APPLICATION_CREDENTIALS = tempCredsPath;
 } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   // Fallback to file-based credentials if specified

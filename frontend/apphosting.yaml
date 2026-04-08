@@ -1,0 +1,21 @@
+kind: "AppHostingYaml"
+apiVersion: "v1"
+runConfig:
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+env:
+  - variable: NEXT_PUBLIC_API_URL
+    value: "https://rank-ai-backend-mnp6th6rcq-uc.a.run.app"
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyDD8_YjRKkNE6z29KvEushEJEPChBYibko"
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "hale-life-368716.firebaseapp.com"
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "hale-life-368716"
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "hale-life-368716.firebasestorage.app"
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "156538337442"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:156538337442:web:b9f95daa18848650acbffb"

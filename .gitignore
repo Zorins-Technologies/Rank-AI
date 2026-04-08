@@ -1,10 +1,10 @@
 # Dependencies
 node_modules/
 
-# Environment files
+# Environment files — block ALL variants, whitelist only .env.example
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Build outputs
 .next/

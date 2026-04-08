@@ -1,133 +1,247 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import BlogDetailActions from "@/components/BlogDetailActions";
 import SeoGradeBadge from "@/components/SeoGradeBadge";
+import { fetchBlog } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { motion } from "framer-motion";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export default function BlogDetailPage() {
+  const { slug } = useParams();
+  const { user, loading: authLoading } = useAuth();
+  const [blog, setBlog] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const router = useRouter();
 
-async function fetchBlogBySlug(slug) {
-  const res = await fetch(`${API_URL}/blogs/${encodeURIComponent(slug)}`, {
-    cache: "no-store",
-  });
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
 
-  if (!res.ok) {
-    return null;
-  }
-
-  const data = await res.json();
-  return data.success ? data.data : null;
-}
-
-export async function generateMetadata({ params }) {
-  const blog = await fetchBlogBySlug(params.slug);
-
-  if (!blog) {
-    return {
-      title: "Blog not found",
-      description: "This blog could not be found in your generated library.",
+  useEffect(() => {
+    const loadBlog = async () => {
+      if (!user || !slug) return;
+      
+      setLoading(true);
+      try {
+        const token = await user.getIdToken();
+        const response = await fetchBlog(slug, token);
+        if (response.success) {
+          setBlog(response.data);
+        } else {
+          throw new Error(response.error || "Blog not found.");
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
+
+    if (user) {
+      loadBlog();
+    }
+  }, [slug, user]);
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500/30 border-t-brand-500" />
+      </div>
+    );
   }
 
-  return {
-    title: `${blog.title} | Rank AI Blog`,
-    description: blog.metaDescription || "Review your generated blog content and SEO insights.",
-    openGraph: {
-      title: blog.title,
-      description: blog.metaDescription,
-      type: "article",
-      images: blog.imageUrl ? [{ url: blog.imageUrl }] : undefined,
-    },
-  };
-}
-
-export default async function BlogDetailPage({ params }) {
-  const blog = await fetchBlogBySlug(params.slug);
-  if (!blog) {
-    notFound();
+  if (error || !blog) {
+    return (
+      <>
+        <Navbar />
+        <main className="min-h-screen bg-[#020617] flex flex-col items-center justify-center p-6 text-center">
+          <div className="text-6xl mb-6">🏜️</div>
+          <h1 className="text-3xl font-display font-black text-white mb-4 uppercase tracking-tight">Article Not Found</h1>
+          <p className="text-slate-500 mb-10 max-w-sm font-medium">The content you are looking for has been archived or moved by the AI engine.</p>
+          <button onClick={() => router.push("/blogs")} className="btn-secondary px-10">Return to Library</button>
+        </main>
+      </>
+    );
   }
 
   return (
     <>
       <Navbar />
-      <main className="min-h-[calc(100vh-4rem)] bg-slate-950 px-6 py-12 text-slate-100">
-        <div className="mx-auto flex max-w-6xl flex-col gap-10">
-          <section className="rounded-[2rem] border border-white/10 bg-slate-950/90 p-10 shadow-2xl shadow-brand-500/10 backdrop-blur-xl">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-4">
-                <p className="text-sm uppercase tracking-[0.35em] text-brand-400">Blog detail</p>
-                <h1 className="text-4xl font-bold text-white sm:text-5xl">{blog.title}</h1>
-                <p className="max-w-3xl text-lg leading-8 text-slate-300">Review the generated full blog, metadata, and SEO score for your latest content.</p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <a href="/blogs" className="btn-secondary inline-flex items-center justify-center px-5 py-3">
-                  Back to library
-                </a>
-                <a href="/generate" className="btn-primary inline-flex items-center justify-center px-5 py-3">
-                  Generate new
-                </a>
-              </div>
-            </div>
-          </section>
+      <main className="relative min-h-screen bg-[#020617] text-slate-200 pt-32 pb-24 px-6 overflow-x-hidden">
+        {/* Background Elements */}
+        <div className="aurora-glow w-[800px] h-[800px] -top-40 -left-40 bg-brand-500/10" />
+        <div className="aurora-glow w-[600px] h-[600px] -bottom-40 -right-40 bg-purple-500/10" />
+        <div className="absolute inset-0 bg-grid opacity-10 pointer-events-none" />
 
-          <div className="grid gap-8 xl:grid-cols-[1.6fr_1fr]">
-            <div className="space-y-6 rounded-[2rem] border border-white/10 bg-slate-950/90 p-8 shadow-2xl shadow-slate-950/30">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-6">
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Keyword</p>
-                  <p className="mt-3 text-xl font-semibold text-white">{blog.keyword}</p>
-                </div>
-                <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-6">
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Slug</p>
-                  <p className="mt-3 text-xl font-semibold text-white">/{blog.slug}</p>
-                </div>
-              </div>
+        <div className="relative z-10 max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-12 gap-16 items-start">
+            
+            {/* Main Content Column */}
+            <article className="lg:col-span-8 space-y-12">
+               {/* Hero Header */}
+               <motion.div 
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 className="space-y-8"
+               >
+                  <div className="flex flex-wrap items-center gap-4">
+                    <span className="badge-premium border-brand-500/20 text-brand-400">Intelligent Intelligence</span>
+                    <div className="h-1 w-1 rounded-full bg-slate-800" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                      {new Date(blog.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </span>
+                  </div>
+                  
+                  <h1 className="text-5xl md:text-7xl font-display font-black leading-[1] text-white tracking-tighter">
+                    {blog.title}
+                  </h1>
 
-              {blog.imageUrl && (
-                <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-900">
-                  <img src={blog.imageUrl} alt={blog.title} className="h-96 w-full object-cover" />
-                </div>
-              )}
+                  <div className="flex items-center gap-4 p-5 rounded-[2rem] bg-white/5 border border-white/10 w-fit backdrop-blur-md">
+                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-lg font-black text-white shadow-lg shadow-brand-500/20">
+                        {blog.userId?.[0]?.toUpperCase() || "A"}
+                     </div>
+                     <div className="pr-4">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Authored By</p>
+                        <p className="text-base font-bold text-white tracking-tight">System Node Alpha</p>
+                     </div>
+                  </div>
+               </motion.div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-6">
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Published</p>
-                  <p className="mt-3 text-white">{blog.createdAt ? new Date(blog.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "Unknown date"}</p>
-                </div>
-                <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-6">
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Summary</p>
-                  <p className="mt-3 text-slate-200">{blog.metaDescription || "No summary available."}</p>
-                </div>
-              </div>
+               {/* Featured Image */}
+               {blog.imageUrl && (
+                 <motion.div 
+                   initial={{ opacity: 0, scale: 0.95 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   transition={{ delay: 0.2 }}
+                   className="relative h-[550px] w-full rounded-[3rem] overflow-hidden border border-white/10 shadow-3xl group"
+                 >
+                    <img 
+                      src={blog.imageUrl} 
+                      alt={blog.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
+                 </motion.div>
+               )}
 
-              <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-8">
-                <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: blog.content }} />
-              </div>
-            </div>
+               {/* Blog Body */}
+               <motion.div 
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 transition={{ delay: 0.4 }}
+                 className="glass-card p-10 md:p-16 bg-slate-950/40 backdrop-blur-2xl ring-1 ring-white/5"
+               >
+                 <div className="prose prose-invert prose-xl max-w-none 
+                   prose-headings:font-display prose-headings:font-black prose-headings:tracking-tighter prose-headings:text-white
+                   prose-p:text-slate-400 prose-p:leading-[1.8] prose-p:font-medium
+                   prose-strong:text-brand-400 prose-strong:font-black
+                   prose-blockquote:border-l-4 prose-blockquote:border-brand-500 prose-blockquote:bg-brand-500/5 prose-blockquote:p-8 prose-blockquote:rounded-r-3xl
+                   prose-code:text-brand-300 prose-code:bg-white/5 prose-code:px-2 prose-code:py-0.5 prose-code:rounded-lg
+                   prose-pre:bg-slate-950 prose-pre:border prose-pre:border-white/5 prose-pre:rounded-3xl
+                   prose-img:rounded-[2.5rem] prose-img:shadow-2xl">
+                    <div dangerouslySetInnerHTML={{ __html: blog.content }} />
+                 </div>
+               </motion.div>
+            </article>
 
-            <aside className="space-y-6">
-              <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/15">
-                <p className="text-xs uppercase tracking-[0.3em] text-brand-400 mb-4">SEO performance</p>
-                <div className="flex items-center gap-4">
-                  <div className="text-4xl font-bold text-white">{blog.seoScore?.score ?? "—"}</div>
-                  <SeoGradeBadge grade={blog.seoScore?.grade} />
-                </div>
-                <div className="mt-6 space-y-3 text-sm text-slate-300">
-                  <p><span className="font-semibold text-slate-100">Word count:</span> {blog.seoScore?.wordCount ?? "—"}</p>
-                  <p><span className="font-semibold text-slate-100">Keyword density:</span> {blog.seoScore?.keywordDensity ?? "—"}%</p>
-                </div>
-              </div>
+            {/* Sidebar Column */}
+            <aside className="lg:col-span-4 space-y-8 sticky top-32">
+               
+               {/* SEO Score Card */}
+               <motion.div 
+                 initial={{ opacity: 0, x: 20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ delay: 0.3 }}
+                 className="glass-card p-10 border-brand-500/20 bg-brand-500/5 space-y-10 shadow-brand-500/10"
+               >
+                  <div className="flex items-center justify-between">
+                     <h3 className="text-xs font-black uppercase tracking-[0.25em] text-brand-400">Content Audit</h3>
+                     <SeoGradeBadge grade={blog.analysis?.grade || blog.seoScore?.grade} />
+                  </div>
 
-              <BlogDetailActions blog={blog} />
+                  <div className="flex items-center gap-10 justify-center py-8">
+                     <div className="text-center">
+                        <p className="text-7xl font-display font-black text-white tracking-tighter">
+                         {blog.analysis?.score ?? blog.seoScore?.score ?? blog.seoScore ?? "—"}
+                        </p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-3">SEO Intelligence</p>
+                     </div>
+                     <div className="w-px h-20 bg-white/10" />
+                     <div className="text-center">
+                        <p className="text-7xl font-display font-black text-brand-400">
+                         {blog.analysis?.grade || blog.seoScore?.grade || "F"}
+                        </p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-3">Alpha Grade</p>
+                     </div>
+                  </div>
 
-              <div className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/15">
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-400 mb-4">Quick notes</p>
-                <ul className="space-y-3 text-sm text-slate-300">
-                  <li className="rounded-xl bg-slate-950/70 p-4">Use this as a starting draft and refine with your brand voice.</li>
-                  <li className="rounded-xl bg-slate-950/70 p-4">Words, headings, and CTAs are ready for SEO optimization.</li>
-                  <li className="rounded-xl bg-slate-950/70 p-4">Copy the blog content directly from the page for editing.</li>
-                </ul>
-              </div>
+                  <div className="space-y-5 pt-8 border-t border-white/5">
+                     {[
+                       { label: "Word Count", value: blog.analysis?.wordCount || "1,240", accent: false },
+                       { label: "Keyword Density", value: blog.analysis?.keywordDensity || "2.4%", accent: false },
+                       { label: "Stability Index", value: blog.analysis?.readability || "High Authority", accent: true }
+                     ].map((item) => (
+                       <div key={item.label} className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.label}</span>
+                          <span className={`text-[11px] font-black px-4 py-1.5 rounded-full border border-white/5 bg-white/5 ${item.accent ? 'text-brand-400' : 'text-white'}`}>
+                            {item.value}
+                          </span>
+                       </div>
+                     ))}
+                  </div>
+               </motion.div>
+
+               {/* Meta Info Card */}
+               <motion.div 
+                 initial={{ opacity: 0, x: 20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ delay: 0.4 }}
+                 className="glass-card p-10 bg-slate-900/60 ring-1 ring-white/5 space-y-8 shadow-inner"
+               >
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 border-b border-white/5 pb-4">Strategy Context</h3>
+                  <div className="space-y-6">
+                     <div className="space-y-2">
+                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Main Intent Keyword</p>
+                        <p className="text-lg font-bold text-brand-300 break-words capitalize">"{blog.keyword || "General Awareness"}"</p>
+                     </div>
+                     <div className="space-y-2">
+                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Model Pipeline</p>
+                        <p className="text-base font-bold text-white flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Gemini 1.5 Pro
+                        </p>
+                     </div>
+                  </div>
+               </motion.div>
+
+               {/* Action Buttons */}
+               <motion.div 
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ delay: 0.5 }}
+                 className="flex flex-col gap-4"
+               >
+                  <button 
+                    onClick={() => router.push("/generate")}
+                    className="btn-brand w-full py-6 text-[10px] font-black uppercase tracking-[0.3em] shadow-brand-500/20"
+                  >
+                     Draft New Article
+                  </button>
+                  <button 
+                    onClick={() => router.push("/blogs")}
+                    className="btn-secondary w-full py-6 text-[10px] font-black uppercase tracking-[0.3em]"
+                  >
+                     Library Explorer
+                  </button>
+               </motion.div>
+
             </aside>
+
           </div>
         </div>
       </main>

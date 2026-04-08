@@ -1,182 +1,155 @@
-# RANK AI
+# Rank AI 🚀
 
-AI-powered SEO blog generator SaaS platform using Google Gemini, Imagen, Firestore, and Cloud Storage.
+[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
+[![Google Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%202.0-blue)](https://cloud.google.com/vertex-ai)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Cloud%20SQL-blue)](https://cloud.google.com/sql/docs/postgres)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+An enterprise-grade AI SaaS platform for generating SEO-optimized blog content using **Google Vertex AI** (Gemini 2.0 Flash) and **PostgreSQL**. Create high-quality, long-form blog posts with matching images, automatic SEO scoring, and secure cloud persistence.
 
 Built by [Zorins Technologies](https://github.com/Zorins-Technologies)
 
-## Features
+---
 
-- 🤖 **AI Blog Generation** — Google Gemini creates SEO-optimized, long-form blog posts
-- 🎨 **AI Image Generation** — Google Imagen generates matching header images
-- 📊 **SEO Scoring** — Automatic SEO analysis with detailed breakdown (0-100 score)
-- 🔗 **SEO-Friendly URLs** — Auto-generated slugs for each blog
-- ❓ **FAQ Generation** — AI-generated FAQ section with every blog
-- ☁️ **Cloud Storage** — Images stored in Google Cloud Storage
-- 🔥 **Firestore Database** — Blogs persisted in Cloud Firestore
-- 🎯 **Meta Tags** — Title + description generated and stored for each blog
+## ✨ Features
 
-## Tech Stack
+- 🤖 **Enterprise AI Generation**: Uses Google Vertex AI (Gemini 2.0 Flash) with automatic fallback systems for 100% uptime.
+- 🎨 **AI Image Generation**: Automatically generate relevant header images using Google Imagen.
+- 📊 **SEO Analysis**: Built-in scoring system providing detailed metrics (Title, Meta, Content, Keyword density).
+- 🔗 **Smart Slugs**: Auto-generated, unique, and SEO-friendly URLs.
+- ❓ **FAQ Generation**: Automatically includes FAQ sections to boost search engine visibility.
+- ☁️ **Cloud Storage**: Secure image storage and delivery via Google Cloud Storage.
+- 🐘 **PostgreSQL Power**: Robust data persistence with Cloud SQL (JSONB support for AI analysis).
+- 🎯 **Production Ready**: Configured for Cloud Run (Backend) and Firebase App Hosting (Frontend).
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14, React 18, Tailwind CSS |
-| Backend | Node.js, Express |
-| AI | Google Vertex AI (Gemini 2.0 Flash, Imagen 3.0) |
-| Database | Google Cloud Firestore |
-| Storage | Google Cloud Storage |
-| Auth | Google Application Default Credentials |
+---
 
-## Project Structure
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: Next.js 14 (App Router)
+- **Deployment**: Firebase App Hosting
+- **Styling**: Tailwind CSS + Framer Motion
+- **Auth**: Firebase Auth (ID Token Verification)
+
+### Backend
+- **Runtime**: Node.js (Express.js)
+- **Deployment**: Google Cloud Run
+- **AI Ecosystem**: Google Vertex AI (Gemini 2.0/1.5 Flash, Imagen)
+- **Database**: PostgreSQL (Cloud SQL)
+- **Security**: Google Application Default Credentials (ADC), Rate Limiting, CORS.
+
+---
+
+## 🚀 Prerequisites
+
+1. **Google Cloud Project** with billing enabled.
+2. **Google Cloud CLI** installed:
+   ```bash
+   gcloud auth application-default login
+   ```
+3. **Enabled APIs**:
+   - Vertex AI API
+   - Cloud SQL Admin API
+   - Cloud Storage API
+
+---
+
+## 📦 Installation & Setup
+
+### 1. Clone & Install
+```bash
+git clone https://github.com/Zorins-Technologies/Rank-AI.git
+cd Rank-AI
+# Install backend deps
+cd backend && npm install
+# Install frontend deps
+cd ../frontend && npm install
+```
+
+### 2. Database Setup (Cloud SQL)
+1. Create a PostgreSQL instance in Google Cloud SQL.
+2. Create a database named `rank_ai`.
+3. Create the `blogs` table:
+   ```sql
+   CREATE TABLE blogs (
+     id SERIAL PRIMARY KEY,
+     user_id VARCHAR(255) NOT NULL,
+     title TEXT NOT NULL,
+     content TEXT NOT NULL,
+     meta_description TEXT,
+     keyword VARCHAR(255),
+     image_url TEXT,
+     slug VARCHAR(255) UNIQUE,
+     analysis JSONB DEFAULT '{}',
+     faq JSONB DEFAULT '[]',
+     status VARCHAR(50) DEFAULT 'published',
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+### 3. Environment Configuration
+
+**Backend (`backend/.env`):**
+```env
+GCP_PROJECT_ID=hale-life-368716
+GCS_BUCKET_NAME=your-bucket-name
+VERTEX_LOCATION=us-central1
+DB_HOST=your-cloud-sql-public-ip
+DB_USER=postgres
+DB_PASSWORD=your-password
+DB_NAME=rank_ai
+```
+
+**Frontend (`frontend/apphosting.yaml`):**
+```yaml
+env:
+  - variable: NEXT_PUBLIC_API_URL
+    value: "https://your-backend-url.a.run.app"
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "..."
+```
+
+---
+
+## 🏗️ Project Structure
 
 ```
 rank-ai/
 ├── backend/
 │   ├── src/
-│   │   ├── app.js                    # Express server entry point
-│   │   ├── config/
-│   │   │   └── index.js              # Environment config
-│   │   ├── middleware/
-│   │   │   └── validate.js           # Input validation
-│   │   ├── routes/
-│   │   │   └── blog.routes.js        # API routes
+│   │   ├── config/           # Env & GCP Config
+│   │   ├── middleware/       # Auth & Validation
+│   │   ├── routes/           # API Endpoints
 │   │   ├── services/
-│   │   │   ├── gemini.service.js      # Gemini blog generation
-│   │   │   ├── imagen.service.js      # Imagen image generation
-│   │   │   ├── firestore.service.js   # Firestore CRUD
-│   │   │   └── storage.service.js     # Cloud Storage uploads
-│   │   └── utils/
-│   │       ├── seo.js                 # SEO score calculator
-│   │       └── slug.js                # URL slug generator
-│   ├── package.json
-│   └── .env.example
+│   │   │   ├── gemini.service.js  # Vertex AI Blog Logic
+│   │   │   ├── sql.service.js     # PostgreSQL (pg) Client
+│   │   │   └── storage.service.js # Cloud Storage
 ├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── layout.js             # Root layout
-│   │   │   ├── globals.css            # Global styles
-│   │   │   ├── page.js               # Dashboard (home)
-│   │   │   ├── generate/page.js      # Blog generator
-│   │   │   └── blogs/page.js         # Blog listing + detail
-│   │   ├── components/
-│   │   │   └── Navbar.js             # Navigation
-│   │   └── lib/
-│   │       └── api.js                # API client
-│   ├── jsconfig.json
-│   ├── next.config.js
-│   ├── tailwind.config.js
-│   ├── package.json
-│   └── .env.local
-├── .gitignore
+│   ├── src/                  # Next.js App Router
+│   ├── apphosting.yaml       # Firebase Deployment Config
+│   └── next.config.js        # Optimized standalone build
 └── README.md
 ```
 
-## Prerequisites
+### 📡 API Documentation
 
-1. **Google Cloud Project** with these APIs enabled:
-   - Vertex AI API
-   - Cloud Firestore API
-   - Cloud Storage API
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/generate-blog` | Generate complete blog with content and image |
+| `POST` | `/api/generate-image` | Generate image only |
+| `GET` | `/api/blogs` | Retrieve all blogs |
+| `GET` | `/api/blogs/:id` | Get specific blog by ID or slug |
+| `GET` | `/api/health` | Health check endpoint |
 
-2. **Google Cloud Authentication:**
-   ```bash
-   gcloud auth application-default login
-   ```
+---
 
-3. **Cloud Storage Bucket:**
-   ```bash
-   gcloud storage buckets create gs://YOUR_BUCKET_NAME --location=us-central1 --uniform-bucket-level-access
-   gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME --member=allUsers --role=roles/storage.objectViewer
-   ```
+## 🤝 Contributing
 
-4. **Firestore Database** (Native mode) created in your GCP project.
+We welcome contributions! Please fork the repository and open a Pull Request.
 
-## Setup
+## 📄 License
 
-### Backend
-
-```bash
-cd backend
-cp .env.example .env
-# Edit .env with your GCP values
-npm install
-npm run dev
-```
-
-Backend runs on http://localhost:8000
-
-### Frontend
-
-```bash
-cd frontend
-cp .env.example .env.local
-npm install
-npm run dev
-```
-
-Frontend runs on http://localhost:3000
-
-## API Endpoints
-
-| Method | Endpoint           | Description                    |
-|--------|--------------------|--------------------------------|
-| POST   | /api/generate-blog | Generate blog + image pipeline |
-| POST   | /api/generate-image| Generate image only            |
-| GET    | /api/blogs         | List all blogs                 |
-| GET    | /api/blogs/:id     | Get blog by ID or slug         |
-| GET    | /api/health        | Health check                   |
-
-## Environment Variables
-
-### Backend (.env)
-```
-GCP_PROJECT_ID=your-project-id
-GCS_BUCKET_NAME=your-bucket-name
-VERTEX_LOCATION=us-central1
-PORT=8000
-```
-
-### Frontend (.env.local)
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
-```
-
-## Security Notes
-
-**Development Firestore Rules (open for testing):**
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
-```
-
-**Production Firestore Rules (recommended):**
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /blogs/{blogId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}
-```
-
-## Future Roadmap
-
-- [ ] Content Planner — Generate 30-day blog ideas from a niche
-- [ ] Auto Blog Scheduler — Schedule daily/weekly auto-generation
-- [ ] Multi-language Support — Generate blogs in 50+ languages
-- [ ] Social Media Auto-posting — Share to Twitter/LinkedIn on publish
-- [ ] User Authentication — Login/signup with usage quotas
-- [ ] Analytics Dashboard — Track blog performance
-- [ ] Export — Download blogs as HTML/Markdown/PDF
-
-## License
-
-Proprietary — Zorins Technologies
+Proprietary — Zorins Technologies (C) 2026

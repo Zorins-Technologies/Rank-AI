@@ -1,96 +1,118 @@
 const express = require("express");
 const router = express.Router();
 
+const { generateBlogPipeline } = require("../services/blog.orchestrator");
 const { generateBlog } = require("../services/gemini.service");
 const { generateImage } = require("../services/imagen.service");
 const { uploadImage } = require("../services/storage.service");
-const { saveBlog, getAllBlogs, getBlogById, getBlogBySlug, checkRecentDuplicate, getBlogByKeyword, getAllSlugs, searchBlogs } = require("../services/firestore.service");
+const db = require("../services/sql.service"); // PostgreSQL service
 const { calculateSeoScore } = require("../utils/seo");
 const { generateUniqueSlug } = require("../utils/slug");
 const { validateKeyword, validateTitle, validateId } = require("../middleware/validate");
+const { generationLimiter } = require("../middleware/rateLimit");
 
-/**
- * POST /api/generate-blog
- * Full pipeline: keyword → blog → image → upload → SEO score → save → respond
- */
-router.post("/generate-blog", validateKeyword, async (req, res) => {
+const { verifyToken } = require("../middleware/auth.middleware");
+
+router.post("/generate", verifyToken, generationLimiter, validateKeyword, async (req, res) => {
   try {
     const { keyword } = req.body;
-    const trimmedKeyword = keyword.trim();
+    const userId = req.user.uid;
 
-    console.log(`[generate-blog] Starting pipeline for keyword: "${trimmedKeyword}"`);
+    console.log(`[Route] POST /api/generate - Keyword: "${keyword}" - User: ${userId}`);
     
-    // SMART CACHE: Check if we already have a blog for this exact keyword
-    console.log("[generate-blog] Step 0: Checking Smart Cache (Firestore)...");
-    const cachedBlog = await getBlogByKeyword(trimmedKeyword);
-    if (cachedBlog) {
-      console.log(`[generate-blog] Smart Cache HIT! Returning blog with ID: ${cachedBlog.id}`);
-      return res.status(200).json({
-        success: true,
-        data: cachedBlog,
-        source: "Smart-Cache"
-      });
-    }
-    console.log("[generate-blog] Smart Cache MISS. Proceeding with generation.");
+    // 1. Generate core content using Gemini
+    const blogData = await generateBlog(keyword.trim());
 
-    // Step 1: Generate blog content with Gemini
-    console.log("[generate-blog] Step 1: Generating blog with Gemini...");
-    const blogData = await generateBlog(trimmedKeyword);
-    console.log(`[generate-blog] Blog generated: "${blogData.title}"`);
-
-    // Step 2: Generate image with Imagen
-    let imageUrl = "";
-    try {
-      console.log("[generate-blog] Step 2: Generating image with Imagen...");
-      const imageBuffer = await generateImage(blogData.title);
-      console.log("[generate-blog] Image generated successfully");
-
-      // Step 3: Upload image to Cloud Storage
-      console.log("[generate-blog] Step 3: Uploading image to Cloud Storage...");
-      imageUrl = await uploadImage(imageBuffer, blogData.title);
-      console.log(`[generate-blog] Image uploaded: ${imageUrl}`);
-    } catch (imgError) {
-      console.warn("[generate-blog] Image generation/upload failed, using premium placeholder:", imgError.message);
-      imageUrl = "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=2070&auto=format&fit=crop";
-    }
-
-    // Step 4: Calculate SEO score
-    console.log("[generate-blog] Step 4: Calculating SEO score...");
-    const seoScore = calculateSeoScore({
+    // 2. Generate accurate SEO Analysis and Grade
+    const analysis = calculateSeoScore({
       title: blogData.title,
       metaDescription: blogData.metaDescription,
       content: blogData.content,
-      keyword: trimmedKeyword,
+      keyword: keyword.trim(),
     });
-    console.log(`[generate-blog] SEO Score: ${seoScore.score}/100 (${seoScore.grade})`);
 
-    // Step 5: Generate unique slug
-    const existingSlugs = await getAllSlugs();
+    // 3. Generate unique slug using SQL
+    const { rows: slugRows } = await db.query(
+      "SELECT slug FROM blogs WHERE user_id = $1",
+      [userId]
+    );
+    const existingSlugs = slugRows.map(r => r.slug);
     const slug = generateUniqueSlug(blogData.title, existingSlugs);
 
-    // Step 6: Save blog to Firestore
-    console.log("[generate-blog] Step 5: Saving blog to Firestore...");
-    const savedBlog = await saveBlog({
-      title: blogData.title,
-      content: blogData.content,
-      metaDescription: blogData.metaDescription,
-      keyword: trimmedKeyword,
-      imageUrl,
+    // 4. Save to PostgreSQL
+    const insertQuery = `
+      INSERT INTO blogs (
+        user_id, title, content, meta_description, keyword, image_url, slug, analysis, faq
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `;
+    
+    const { rows: [savedBlog] } = await db.query(insertQuery, [
+      userId,
+      blogData.title,
+      blogData.content,
+      blogData.metaDescription,
+      keyword.trim().toLowerCase(),
+      blogData.imageUrl,
       slug,
-      seoScore,
-      faq: blogData.faq || [],
-    });
-    console.log(`[generate-blog] Blog saved with ID: ${savedBlog.id}, slug: ${slug}`);
+      JSON.stringify(analysis),
+      JSON.stringify(blogData.faq || [])
+    ]);
+
+    // Map snake_case to camelCase for frontend compatibility
+    const responseData = {
+      id: savedBlog.id,
+      userId: savedBlog.user_id,
+      title: savedBlog.title,
+      content: savedBlog.content,
+      metaDescription: savedBlog.meta_description,
+      keyword: savedBlog.keyword,
+      imageUrl: savedBlog.image_url,
+      slug: savedBlog.slug,
+      analysis: savedBlog.analysis,
+      faq: savedBlog.faq,
+      status: savedBlog.status,
+      createdAt: savedBlog.created_at,
+      updatedAt: savedBlog.updated_at
+    };
 
     return res.status(201).json({
       success: true,
-      data: savedBlog,
+      data: responseData,
     });
   } catch (error) {
-    console.error("[generate-blog] Error:", error.message);
+    console.error("[Route Error] generate:", error.message);
     return res.status(500).json({
       success: false,
-      error: "Failed to generate blog. " + error.message,
+      error: "Failed to generate blog: " + error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/generate-blog
+ * Optimized pipeline: Delegate orchestration to blog.orchestrator
+ */
+router.post("/generate-blog", verifyToken, generationLimiter, validateKeyword, async (req, res) => {
+  try {
+    const { keyword } = req.body;
+    const userId = req.user.uid;
+
+    console.log(`[Route] POST /api/generate-blog - Keyword: "${keyword}" - User: ${userId}`);
+    
+    // Delegate to orchestrator
+    const result = await generateBlogPipeline(userId, keyword);
+
+    return res.status(result.id ? 201 : 200).json({
+      success: true,
+      data: result,
+      source: result.source || "Orchestrator"
+    });
+  } catch (error) {
+    console.error("[Route Error] generate-blog:", error.message);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to generate blog: " + error.message,
     });
   }
 });
@@ -99,11 +121,11 @@ router.post("/generate-blog", validateKeyword, async (req, res) => {
  * POST /api/generate-image
  * Standalone image generation endpoint
  */
-router.post("/generate-image", validateTitle, async (req, res) => {
+router.post("/generate-image", verifyToken, generationLimiter, validateTitle, async (req, res) => {
   try {
     const { title } = req.body;
 
-    console.log(`[generate-image] Generating image for: "${title}"`);
+    console.log(`[generate-image] Generating image for: "${title}" - User: ${req.user.uid}`);
     const imageBuffer = await generateImage(title);
     const imageUrl = await uploadImage(imageBuffer, title);
 
@@ -120,21 +142,51 @@ router.post("/generate-image", validateTitle, async (req, res) => {
   }
 });
 
-/**
- * GET /api/blogs
- * Fetch all blogs or search blogs by query parameter
- */
-router.get("/blogs", async (req, res) => {
+router.get("/blogs", verifyToken, async (req, res) => {
   try {
     const { search } = req.query;
-    let blogs;
-    
+    const userId = req.user.uid;
+    let query;
+    let params;
+
     if (search) {
-      blogs = await searchBlogs(search);
+      console.log(`[Route] GET /api/blogs - Search: "${search}" - User: ${userId}`);
+      query = `
+        SELECT * FROM blogs 
+        WHERE user_id = $1 
+        AND (title ILIKE $2 OR keyword ILIKE $2 OR content ILIKE $2)
+        ORDER BY created_at DESC
+      `;
+      params = [userId, `%${search}%` || ''];
     } else {
-      blogs = await getAllBlogs();
+      console.log(`[Route] GET /api/blogs - Fetch All - User: ${userId}`);
+      query = `
+        SELECT * FROM blogs 
+        WHERE user_id = $1 
+        ORDER BY created_at DESC
+      `;
+      params = [userId];
     }
-    
+
+    const { rows } = await db.query(query, params);
+
+    // Map to frontend expected format
+    const blogs = rows.map(blog => ({
+      id: blog.id,
+      userId: blog.user_id,
+      title: blog.title,
+      content: blog.content,
+      metaDescription: blog.meta_description,
+      keyword: blog.keyword,
+      imageUrl: blog.image_url,
+      slug: blog.slug,
+      analysis: blog.analysis,
+      faq: blog.faq,
+      status: blog.status,
+      createdAt: blog.created_at,
+      updatedAt: blog.updated_at
+    }));
+
     return res.status(200).json({
       success: true,
       data: blogs,
@@ -149,19 +201,25 @@ router.get("/blogs", async (req, res) => {
   }
 });
 
-/**
- * GET /api/blogs/:id
- * Fetch a single blog by ID or slug
- */
-router.get("/blogs/:id", async (req, res) => {
+router.get("/blogs/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.uid;
 
-    // Try slug first, then ID
-    let blog = await getBlogBySlug(id);
-    if (!blog) {
-      blog = await getBlogById(id);
+    // PostgreSQL query for either ID (UUID) or Slug
+    // We check if the ID is a valid UUID first, otherwise we treat it as a slug
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    let query;
+    let params = [userId, id];
+
+    if (isUuid) {
+      query = "SELECT * FROM blogs WHERE user_id = $1 AND id = $2 LIMIT 1";
+    } else {
+      query = "SELECT * FROM blogs WHERE user_id = $1 AND slug = $2 LIMIT 1";
     }
+
+    const { rows: [blog] } = await db.query(query, params);
 
     if (!blog) {
       return res.status(404).json({
@@ -170,9 +228,25 @@ router.get("/blogs/:id", async (req, res) => {
       });
     }
 
+    const responseData = {
+      id: blog.id,
+      userId: blog.user_id,
+      title: blog.title,
+      content: blog.content,
+      metaDescription: blog.meta_description,
+      keyword: blog.keyword,
+      imageUrl: blog.image_url,
+      slug: blog.slug,
+      analysis: blog.analysis,
+      faq: blog.faq,
+      status: blog.status,
+      createdAt: blog.created_at,
+      updatedAt: blog.updated_at
+    };
+
     return res.status(200).json({
       success: true,
-      data: blog,
+      data: responseData,
     });
   } catch (error) {
     console.error("[blogs/:id] Error:", error.message);

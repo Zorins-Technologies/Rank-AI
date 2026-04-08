@@ -24,8 +24,8 @@ function fetchBuffer(url) {
 }
 
 function getPublicImageUrl(blogTitle) {
-  const query = encodeURIComponent(blogTitle || "blog header");
-  return `https://source.unsplash.com/1600x900/?${query}`;
+  const seed = encodeURIComponent(blogTitle || "blog-header");
+  return `https://picsum.photos/seed/${seed}/1600/900`;
 }
 
 /**
