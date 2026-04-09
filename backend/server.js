@@ -10,38 +10,25 @@ const app = express();
 const PORT = config.port || 8000;
 
 // 1. CORS CONFIGURATION (Must be first to handle preflights)
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : [
-      'http://localhost:3000', 
-      'http://localhost:3001',
-      /\.web\.app$/, 
-      /\.firebaseapp\.com$/,
-      /\.apphosting\.dev$/
-    ];
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    // Check both string equality and RegExp patterns
-    const isAllowed = allowedOrigins.some(allowed =>
-      allowed instanceof RegExp ? allowed.test(origin) : allowed === origin
-    );
-    if (isAllowed || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  optionsSuccessStatus: 200
-};
+app.options("*", cors());
 
-// Apply CORS BEFORE any other middleware
-app.use(cors(corsOptions));
+// Raw Headers Fallback to guarantee CORS compliance
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // 2. Standard Middlewares
 app.use(express.json({ limit: '1mb' }));
