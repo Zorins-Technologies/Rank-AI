@@ -13,8 +13,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${outfit.variable} font-sans antialiased text-slate-100 bg-[#020617]`}>
+    <html lang="en" className="scroll-smooth">
+      <body className={`${inter.variable} ${outfit.variable} font-sans antialiased text-slate-100 bg-[#020617] selection:bg-brand-500/30`}>
         <AuthProvider>
           <Toaster 
             position="bottom-right"

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
 
 @tailwind base;
 @tailwind components;
@@ -45,8 +45,8 @@
   }
 
   /* Typography */
-  .font-display { font-family: 'Outfit', sans-serif; }
-  .font-sans { font-family: 'Inter', sans-serif; }
+  .font-display { font-family: var(--font-display), system-ui, sans-serif; }
+  .font-sans { font-family: var(--font-sans), system-ui, sans-serif; }
 
   .gradient-text {
     @apply bg-gradient-to-br from-white via-white to-slate-400 bg-clip-text text-transparent;

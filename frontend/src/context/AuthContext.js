@@ -18,12 +18,13 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        setUser(null);
-      }
+      setUser(user || null);
       setLoading(false);
     });
 
@@ -31,19 +32,23 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const signup = (email, password) => {
+    if (!auth) throw new Error("Auth service unavailable");
     return createUserWithEmailAndPassword(auth, email, password);
   };
 
   const login = (email, password) => {
+    if (!auth) throw new Error("Auth service unavailable");
     return signInWithEmailAndPassword(auth, email, password);
   };
 
   const loginWithGoogle = () => {
+    if (!auth || !googleProvider) throw new Error("Auth service unavailable");
     return signInWithPopup(auth, googleProvider);
   };
 
   const logout = async () => {
     setUser(null);
+    if (!auth) return;
     await signOut(auth);
   };
 

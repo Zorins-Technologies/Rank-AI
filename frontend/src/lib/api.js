@@ -71,7 +71,7 @@ export async function fetchBlogs(searchTerm = "", cursor = "", token) {
     console.error("[API] HTTP Error in fetchBlogs:", error.message);
     // Custom friendly message for connection failures
     if (error.message.includes("Failed to fetch")) {
-      throw new Error("Unable to connect to the backend server. Please ensure it is running on http://localhost:8000");
+      throw new Error("Unable to connect to the server. Please try again later or contact support.");
     }
     throw error;
   }

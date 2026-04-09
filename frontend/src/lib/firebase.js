@@ -11,18 +11,29 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// --- FIX: Handle multiple initializations in Next.js ---
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+// Initialize Firebase defensively
+let app;
+let auth = null;
+const googleProvider = new GoogleAuthProvider();
 
-// --- ADDED DEBUGGING LOGS (ONLY SHOWS IN BROWSER CONSOLE) ---
-if (typeof window !== "undefined") {
-  console.log("Firebase initialized successfully with API Key:", !!firebaseConfig.apiKey);
-  if (!firebaseConfig.apiKey) {
-    console.warn("Firebase Error: Your API key is undefined. Please restart your dev server (npm run dev).");
+try {
+  if (firebaseConfig.apiKey) {
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    auth = getAuth(app);
+  } else {
+    // This branch is expected during build time on Vercel if keys aren't provided to the builder
+    console.warn("[Firebase] Initialization skipped: Missing API Key. Auth services will be disabled.");
   }
+} catch (error) {
+  console.error("[Firebase] Initialization error:", error);
 }
 
-// Export Auth and Google Provider
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+// --- ADDED DEBUGGING LOGS (ONLY SHOWS IN BROWSER CONSOLE) ---
+if (typeof window !== "undefined" && firebaseConfig.apiKey) {
+  console.log("Firebase initialized successfully");
+} else if (typeof window !== "undefined") {
+  console.warn("Firebase Error: Your API key is undefined. Authentication will not work until provided.");
+}
+
+export { auth, googleProvider };
 export default app;
