@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import SeoGradeBadge from "@/components/SeoGradeBadge";
-import { fetchBlog } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
+import Navbar from "../../../components/Navbar";
+import SeoGradeBadge from "../../../components/SeoGradeBadge";
+import { fetchBlog } from "../../../lib/api";
+import { useAuth } from "../../../context/AuthContext";
 import { motion } from "framer-motion";
 
 export default function BlogDetailPage() {

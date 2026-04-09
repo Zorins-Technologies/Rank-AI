@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import BlogCard from "@/components/BlogCard";
-import BlogCardSkeleton from "@/components/BlogCardSkeleton";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { fetchBlogs } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
+import Navbar from "../../components/Navbar";
+import BlogCard from "../../components/BlogCard";
+import BlogCardSkeleton from "../../components/BlogCardSkeleton";
+import ProtectedRoute from "../../components/ProtectedRoute";
+import { fetchBlogs } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 
 export default function BlogsPage() {
   const { user } = useAuth();

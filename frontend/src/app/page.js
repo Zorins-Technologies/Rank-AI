@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
+import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 
 export default function HomePage() {

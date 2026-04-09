@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import Navbar from "@/components/Navbar";
-import { generateBlog } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
+import Navbar from "../../components/Navbar";
+import { generateBlog } from "../../lib/api";
+import { useAuth } from "../../context/AuthContext";
 
 import { toast } from "react-hot-toast";
 
