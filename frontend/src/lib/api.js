@@ -17,6 +17,33 @@ const getHeaders = (token) => {
 };
 
 /**
+ * Robust fetch wrapper with timeout and retry logic
+ */
+async function fetchWithRetry(url, options = {}, retries = 1, timeoutMs = 30000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const isTimeout = err.name === 'AbortError';
+    
+    if (retries > 0) {
+      console.warn(`[API] ${isTimeout ? 'Timeout' : 'Error'} on ${url}. Retrying... (${retries} left)`);
+      // Wait a moment before retrying
+      await new Promise(res => setTimeout(res, 1000));
+      return fetchWithRetry(url, options, retries - 1, timeoutMs);
+    }
+    
+    if (isTimeout) throw new Error("Request timed out after 30 seconds.");
+    throw err;
+  }
+}
+
+/**
  * Helper to handle fetch responses safely
  * Returns parsed JSON and handles non-OK statuses
  */
@@ -48,7 +75,7 @@ async function handleResponse(res, context) {
 export async function generateBlog(keyword, token) {
   console.log(`[API] Generating blog for URL: ${API_URL}/generate, keyword: "${keyword}"`);
   try {
-    const res = await fetch(`${API_URL}/generate`, {
+    const res = await fetchWithRetry(`${API_URL}/generate`, {
       method: "POST",
       headers: getHeaders(token),
       body: JSON.stringify({ keyword }),
@@ -75,7 +102,7 @@ export async function fetchBlogs(searchTerm = "", cursor = "", token) {
 
   console.log(`[API] Fetching blogs from: ${url}`);
   try {
-    const res = await fetch(url, { 
+    const res = await fetchWithRetry(url, { 
       cache: "no-store",
       headers: getHeaders(token)
     });
@@ -89,7 +116,7 @@ export async function fetchBlogs(searchTerm = "", cursor = "", token) {
 export async function fetchBlog(idOrSlug, token) {
   console.log(`[API] Fetching single blog detail: ${API_URL}/blogs/${idOrSlug}`);
   try {
-    const res = await fetch(`${API_URL}/blogs/${idOrSlug}`, { 
+    const res = await fetchWithRetry(`${API_URL}/blogs/${idOrSlug}`, { 
       cache: "no-store",
       headers: getHeaders(token)
     });
@@ -105,7 +132,7 @@ export async function fetchBlog(idOrSlug, token) {
 export async function researchKeywords(niche, token) {
   console.log(`[API] Researching keywords for niche: "${niche}"`);
   try {
-    const res = await fetch(`${API_URL}/keywords/research`, {
+    const res = await fetchWithRetry(`${API_URL}/keywords/research`, {
       method: "POST",
       headers: getHeaders(token),
       body: JSON.stringify({ niche }),
@@ -122,7 +149,7 @@ export async function fetchKeywords(token, filters = {}) {
   const url = `${API_URL}/keywords${params ? "?" + params : ""}`;
   console.log(`[API] Fetching keywords from: ${url}`);
   try {
-    const res = await fetch(url, { cache: "no-store", headers: getHeaders(token) });
+    const res = await fetchWithRetry(url, { cache: "no-store", headers: getHeaders(token) });
     return await handleResponse(res, "FetchKeywords");
   } catch (err) {
     console.error("API ERROR:", err);
@@ -133,7 +160,7 @@ export async function fetchKeywords(token, filters = {}) {
 export async function generateFromKeyword(keywordId, token) {
   console.log(`[API] Triggering generation for keyword ID: ${keywordId}`);
   try {
-    const res = await fetch(`${API_URL}/keywords/${keywordId}/generate`, {
+    const res = await fetchWithRetry(`${API_URL}/keywords/${keywordId}/generate`, {
       method: "POST",
       headers: getHeaders(token),
     });
