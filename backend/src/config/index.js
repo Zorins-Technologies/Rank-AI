@@ -10,7 +10,7 @@ const config = {
   gcpProjectId: process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT,
   gcsBucketName: process.env.GCS_BUCKET_NAME,
   vertexLocation: process.env.VERTEX_LOCATION || "us-central1",
-  port: process.env.PORT || 8000,
+  port: process.env.PORT || 8080,
   genaiApiKey: process.env.GENAI_API_KEY,
 };
 

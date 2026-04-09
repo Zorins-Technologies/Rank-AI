@@ -4,10 +4,15 @@ const path = require('path');
 const config = require('./src/config'); 
 const db = require('./src/services/sql.service');
 const blogRoutes = require('./src/routes/blog.routes.js');
+const keywordRoutes = require('./src/routes/keyword.routes.js');
 const { apiLimiter } = require('./src/middleware/rateLimit');
+const { startAutoGenerateJob } = require('./src/jobs/autoGenerate.job');
 
 const app = express();
-const PORT = config.port || 8000;
+const PORT = process.env.PORT || 8080;
+
+// Required for Cloud Run to correctly identify user IPs for rate limiting
+app.set('trust proxy', 1);
 
 // 1. CORS CONFIGURATION (Must be first to handle preflights)
 app.use(cors({
@@ -64,7 +69,8 @@ app.get('/health-db', async (req, res) => {
 });
 
 // Business Logic Routes (SaaS)
-app.use('/api', blogRoutes);
+app.use('/', blogRoutes);
+app.use('/keywords', keywordRoutes);
 
 // Compatibility fallback for root access
 app.get('/', (req, res) => {
@@ -90,13 +96,49 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ─── On-Boot Database Migration ─────────────────────────────────────────────
+async function runMigrations() {
+  try {
+    await db.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS keyword_research (
+        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id      TEXT NOT NULL,
+        niche        TEXT NOT NULL,
+        keyword      TEXT NOT NULL,
+        search_volume INT DEFAULT 0,
+        difficulty   TEXT DEFAULT 'medium',
+        intent       TEXT DEFAULT 'informational',
+        status       TEXT DEFAULT 'pending',
+        blog_id      UUID REFERENCES blogs(id) ON DELETE SET NULL,
+        created_at   TIMESTAMPTZ DEFAULT NOW(),
+        updated_at   TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await db.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS keyword_research_user_keyword_idx
+      ON keyword_research (user_id, keyword)
+    `);
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS keyword_research_status_idx
+      ON keyword_research (user_id, status, created_at DESC)
+    `);
+    console.log('[Migration] keyword_research table ready.');
+  } catch (err) {
+    console.error('[Migration] Error:', err.message);
+  }
+}
+
 // Startup logic
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', async () => {
   console.log(`\n============================================`);
-  console.log(`  Rank AI SaaS — UP & RUNNING on Port ${PORT}`);
+  console.log(`  Rank AI SaaS — UP & RUNNING on 0.0.0.0:${PORT}`);
   console.log(`  Project: ${config.gcpProjectId}`);
   console.log(`  Modernized April 2026 (Gen AI SDK)`);
   console.log(`============================================\n`);
+
+  await runMigrations();
+  startAutoGenerateJob();
 });
 
 // Graceful Shutdown Handler

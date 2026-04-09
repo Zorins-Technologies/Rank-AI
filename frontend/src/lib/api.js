@@ -1,5 +1,4 @@
-const rawUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const API_URL = rawUrl.replace(/\/$/, "");
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 console.log("========================================");
 console.log("API URL CONFIGURED:", process.env.NEXT_PUBLIC_API_URL);
@@ -98,5 +97,49 @@ export async function fetchBlog(idOrSlug, token) {
   } catch (err) {
     console.error("API ERROR:", err);
     throw new Error("Failed to load article detail. The backend might be offline.");
+  }
+}
+
+// ─── Keyword Research API ──────────────────────────────────────────────────────
+
+export async function researchKeywords(niche, token) {
+  console.log(`[API] Researching keywords for niche: "${niche}"`);
+  try {
+    const res = await fetch(`${API_URL}/keywords/research`, {
+      method: "POST",
+      headers: getHeaders(token),
+      body: JSON.stringify({ niche }),
+    });
+    return await handleResponse(res, "ResearchKeywords");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    return { success: false, error: "Failed to research keywords. Please try again." };
+  }
+}
+
+export async function fetchKeywords(token, filters = {}) {
+  const params = new URLSearchParams(filters).toString();
+  const url = `${API_URL}/keywords${params ? "?" + params : ""}`;
+  console.log(`[API] Fetching keywords from: ${url}`);
+  try {
+    const res = await fetch(url, { cache: "no-store", headers: getHeaders(token) });
+    return await handleResponse(res, "FetchKeywords");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    throw new Error("Unable to load keywords. Check backend connection.");
+  }
+}
+
+export async function generateFromKeyword(keywordId, token) {
+  console.log(`[API] Triggering generation for keyword ID: ${keywordId}`);
+  try {
+    const res = await fetch(`${API_URL}/keywords/${keywordId}/generate`, {
+      method: "POST",
+      headers: getHeaders(token),
+    });
+    return await handleResponse(res, "GenerateFromKeyword");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    return { success: false, error: "Failed to start generation. Please try again." };
   }
 }

@@ -14,14 +14,21 @@ const { generationLimiter } = require("../middleware/rateLimit");
 const { verifyToken } = require("../middleware/auth.middleware");
 
 router.post("/generate", verifyToken, generationLimiter, validateKeyword, async (req, res) => {
+  console.log("REQUEST RECEIVED:", req.body);
   try {
     const { keyword } = req.body;
     const userId = req.user.uid;
 
     console.log(`[Route] POST /api/generate - Keyword: "${keyword}" - User: ${userId}`);
     
-    // 1. Generate core content using Gemini
-    const blogData = await generateBlog(keyword.trim());
+    // Safety Timeout (e.g. 50 seconds for Gemini/DB to prevent hangs)
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Generation timed out")), 50000)
+    );
+
+    // 1. Generate core content using Gemini (wrapped in timeout to prevent hanging connections)
+    const generateProcess = generateBlog(keyword.trim());
+    const blogData = await Promise.race([generateProcess, timeoutPromise]);
 
     // 2. Generate accurate SEO Analysis and Grade
     const analysis = calculateSeoScore({
