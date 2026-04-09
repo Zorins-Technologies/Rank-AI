@@ -147,12 +147,20 @@ export default function BlogsPage() {
                   <h3 className="text-2xl font-display font-bold text-white">Your library is empty.</h3>
                   <p className="text-slate-400">Time to generate your first SEO-optimized masterpiece.</p>
                 </div>
-                <button 
-                  onClick={() => router.push("/generate")}
-                  className="btn-brand px-8"
-                >
-                  Start Generating
-                </button>
+                <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
+                  <button 
+                    onClick={() => router.push("/keywords")}
+                    className="btn-brand px-8"
+                  >
+                    Launch AutoSEO 🚀
+                  </button>
+                  <button 
+                    onClick={() => router.push("/generate")}
+                    className="btn-secondary px-8 bg-slate-900 border-white/5"
+                  >
+                    Manual Studio
+                  </button>
+                </div>
               </motion.div>
             ) : (
               <motion.div 

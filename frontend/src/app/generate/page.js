@@ -115,6 +115,12 @@ export default function GeneratePage() {
                     Generate Now
                   </button>
                 </form>
+                
+                <div className="absolute -bottom-14 left-0 right-0 text-center">
+                  <p className="text-sm font-medium text-slate-500">
+                    Not sure what to write about? <a href="/keywords" className="text-brand-400 font-bold underline decoration-brand-400/30 underline-offset-4 hover:text-brand-300">Try our AutoSEO Keyword Engine</a>
+                  </p>
+                </div>
               </motion.div>
             ) : loading ? (
               <motion.div

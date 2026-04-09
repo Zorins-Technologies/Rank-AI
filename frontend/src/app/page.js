@@ -54,11 +54,11 @@ export default function HomePage() {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-5 pt-4">
-                  <Link href="/generate" className="btn-brand px-10 py-5 text-sm uppercase tracking-widest font-black">
-                    Start Generating
+                  <Link href="/keywords" className="btn-brand px-10 py-5 text-sm uppercase tracking-widest font-black flex items-center justify-center gap-2">
+                    <span className="text-xl">🚀</span> Launch AutoSEO
                   </Link>
-                  <Link href="/blogs" className="btn-secondary px-10 py-5 text-sm uppercase tracking-widest font-black">
-                    View Library
+                  <Link href="/generate" className="btn-secondary px-10 py-5 text-sm uppercase tracking-widest font-black bg-slate-900 border-white/5">
+                    Manual Studio
                   </Link>
                 </div>
 
@@ -134,9 +134,9 @@ export default function HomePage() {
           <div className="mx-auto max-w-7xl">
             <div className="grid md:grid-cols-3 gap-10">
                {[
-                { title: "Smart Generation", desc: "Long-form content that sounds human and ranks like a pro using Gemini 1.5.", icon: "✨" },
-                { title: "Imagen Studio", desc: "Custom AI-generated visuals for every section of your blog, automatically.", icon: "🎨" },
-                { title: "SEO Intelligence", desc: "Built-in optimization checks for metadata, keyword density, and word counts.", icon: "📈" }
+                { title: "Auto Keyword Discovery", desc: "Enter a niche and let Gemini find 30+ high-volume, low-competition keywords.", icon: "🎯" },
+                { title: "Set & Forget Engine", desc: "Auto-generate up to 5 SEO-optimized articles daily. Passive traffic generation.", icon: "⚙️" },
+                { title: "Intelligent Studio", desc: "Built-in optimization checks for metadata, keyword density, and word counts.", icon: "📈" }
                ].map((feature, i) => (
                  <motion.div
                    key={feature.title}

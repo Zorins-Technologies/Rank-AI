@@ -227,17 +227,27 @@ export default function BlogDetailPage() {
                  className="flex flex-col gap-4"
                >
                   <button 
-                    onClick={() => router.push("/generate")}
+                    onClick={() => router.push("/keywords")}
                     className="btn-brand w-full py-6 text-[10px] font-black uppercase tracking-[0.3em] shadow-brand-500/20"
                   >
-                     Draft New Article
+                     <span className="flex items-center justify-center gap-2">
+                       <span className="text-xl">🚀</span> AutoSEO Engine
+                     </span>
                   </button>
-                  <button 
-                    onClick={() => router.push("/blogs")}
-                    className="btn-secondary w-full py-6 text-[10px] font-black uppercase tracking-[0.3em]"
-                  >
-                     Library Explorer
-                  </button>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => router.push("/generate")}
+                      className="btn-secondary flex-1 py-4 text-[9px] font-black uppercase tracking-[0.2em]"
+                    >
+                       Manual Studio
+                    </button>
+                    <button 
+                      onClick={() => router.push("/blogs")}
+                      className="btn-secondary flex-1 py-4 text-[9px] font-black uppercase tracking-[0.2em]"
+                    >
+                       Library
+                    </button>
+                  </div>
                </motion.div>
 
             </aside>

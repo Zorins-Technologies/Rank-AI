@@ -67,7 +67,7 @@ export default function LoginPage() {
             </div>
           </Link>
           <h1 className="text-4xl font-display font-black tracking-tighter text-white">Welcome Back</h1>
-          <p className="text-slate-500 font-medium">Continue your SEO intelligence journey.</p>
+          <p className="text-slate-500 font-medium">Continue accelerating your AutoSEO content engine.</p>
         </div>
 
         <div className="glass-card p-10 bg-slate-900/40 backdrop-blur-3xl ring-1 ring-white/5 shadow-2xl">

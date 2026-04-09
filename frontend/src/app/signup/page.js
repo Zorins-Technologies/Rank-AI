@@ -71,8 +71,8 @@ export default function SignupPage() {
               </svg>
             </div>
           </Link>
-          <h1 className="text-4xl font-display font-black tracking-tighter text-white uppercase italic">Initialize Agent</h1>
-          <p className="text-slate-500 font-medium tracking-tight">Deploy your personal AI content engine today.</p>
+          <h1 className="text-4xl font-display font-black tracking-tighter text-white uppercase italic">Initialize Account</h1>
+          <p className="text-slate-500 font-medium tracking-tight">Deploy your personal AutoSEO content engine today.</p>
         </div>
 
         <div className="glass-card p-10 bg-slate-900/40 backdrop-blur-3xl ring-1 ring-white/5 shadow-2xl">
