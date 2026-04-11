@@ -65,6 +65,32 @@ const dashboardMockData = {
   }
 };
 
+  }
+];
+
+const faqs = [
+  {
+    question: "How is AEO different from SEO?",
+    answer: "Traditional SEO focuses strictly on ranking in Google search results. AEO (Answer Engine Optimization) is about ensuring your brand is the primary source cited by AI engines like ChatGPT, Perplexity, and Gemini. RankAI does both automatically."
+  },
+  {
+    question: "Is this safe for my Google rankings?",
+    answer: "Absolutely. We follow Google's latest AI content guidelines, focusing on E-E-A-T (Experience, Expertise, Authoritativeness, and Trustworthiness). Our AI writes for humans first, ensuring long-term safety and ranking stability."
+  },
+  {
+    question: "How fast will I see results?",
+    answer: "While traditional SEO takes 6-12 months, our users typically see their first AI engine citations and indexing improvements within 3-6 weeks, thanks to our automated backlink and indexing accelerators."
+  },
+  {
+    question: "Do you build real backlinks?",
+    answer: "Yes. RankAI identifies high-authority platforms in your niche (like Medium, Reddit, and industry blogs) and secures placements, ensuring your brand builds genuine domain authority that AI engines trust."
+  },
+  {
+    question: "Can I cancel anytime?",
+    answer: "Yes. We don't believe in locking users into long-term contracts. You can cancel your subscription at any time directly through your dashboard with a single click."
+  }
+];
+
 const testimonials = [
   {
     name: "James Wilson",
@@ -119,6 +145,7 @@ export default function HomePage() {
   const [targetSite, setTargetSite] = useState("yourwebsite.com");
   const [isAnnual, setIsAnnual] = useState(false);
   const [activeDashboardTab, setActiveDashboardTab] = useState("Articles");
+  const [activeFaq, setActiveFaq] = useState(null);
   
   // ROI Calculator State
   const [visitors, setVisitors] = useState(1000);
@@ -1128,120 +1155,168 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Pricing Section */}
-        <section className="relative z-10 px-6 py-32 border-t border-white/5">
-          <div className="mx-auto max-w-7xl">
+        {/* FAQ Section */}
+        <section className="relative z-10 px-6 py-32 bg-[#020617] border-t border-white/5">
+          <div className="mx-auto max-w-3xl">
             <div className="text-center mb-16 space-y-4">
-              <h2 className="text-4xl md:text-6xl font-display font-black text-white tracking-tight">
-                Simple, Transparent Pricing
+              <h2 className="text-4xl md:text-5xl font-display font-black text-white tracking-tight">
+                Frequently Asked Questions
               </h2>
-              <p className="text-slate-400 text-xl font-medium max-w-2xl mx-auto">
-                Start ranking on autopilot — without expensive SEO agencies.
-              </p>
-              
-              {/* Toggle */}
-              <div className="flex items-center justify-center gap-4 pt-8">
-                <span className={`text-sm font-bold ${!isAnnual ? "text-white" : "text-slate-500"}`}>Monthly</span>
-                <button 
-                  onClick={() => setIsAnnual(!isAnnual)}
-                  className="relative w-16 h-8 rounded-full bg-slate-800 border border-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-                  aria-label="Toggle Annual Pricing"
-                >
-                  <motion.div 
-                    layout
-                    className="absolute top-1 bottom-1 w-6 bg-brand-500 rounded-full shadow-lg"
-                    initial={false}
-                    animate={{ left: isAnnual ? "36px" : "4px" }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                </button>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-bold ${isAnnual ? "text-white" : "text-slate-500"}`}>Annual</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    Save 40%
-                  </span>
-                </div>
-              </div>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto items-start pt-8">
-              {pricingPlans.map((plan, idx) => (
-                <motion.div 
-                  key={plan.name}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.1, duration: 0.5 }}
-                  className={`glass-card p-8 flex flex-col h-full transition-transform duration-300 hover:-translate-y-2 ${
-                    plan.popular ? "bg-slate-900 border-brand-500/50 shadow-[0_0_40px_rgba(99,102,241,0.15)] relative scale-100 lg:scale-105 z-10" : "bg-slate-900/60 border-white/5"
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-0 right-0 flex justify-center">
-                       <span className="px-4 py-1.5 bg-gradient-to-r from-brand-600 to-indigo-500 text-[10px] font-black uppercase tracking-widest text-white rounded-full shadow-lg ring-2 ring-[#020617]">
-                         Most Popular
-                       </span>
-                    </div>
-                  )}
-                  
-                  <div className="mb-8">
-                    <h3 className="text-2xl font-display font-black text-white mb-2">{plan.name}</h3>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-5xl font-display font-black text-white">
-                        ${isAnnual ? plan.annualPrice : plan.monthlyPrice}
-                      </span>
-                      <span className="text-slate-500 font-bold uppercase text-xs tracking-widest">/month</span>
-                    </div>
-                    {isAnnual && (
-                      <p className="text-emerald-400 text-xs font-bold mt-3 bg-emerald-500/10 inline-block px-2 py-1 rounded">
-                        Billed ${plan.annualPrice * 12} yearly
-                      </p>
-                    )}
-                  </div>
-
-                  <ul className="space-y-4 mb-10 flex-grow">
-                    {plan.features.map(feature => (
-                      <li key={feature} className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-brand-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className="text-slate-300 font-medium text-base leading-snug">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-lg ${
-                    plan.popular 
-                      ? "bg-brand-600 text-white hover:bg-brand-500 shadow-brand-500/20 active:scale-95" 
-                      : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/5 active:scale-95"
-                  }`}>
-                    Start Free Trial
+            <div className="space-y-4">
+              {faqs.map((faq, idx) => (
+                <div key={idx} className="glass-card overflow-hidden border-white/5 bg-slate-900/40">
+                  <button
+                    onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                    className="w-full px-8 py-6 text-left flex items-center justify-between group"
+                  >
+                    <span className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors">{faq.question}</span>
+                    <motion.span
+                      animate={{ rotate: activeFaq === idx ? 180 : 0 }}
+                      className="text-slate-500 group-hover:text-brand-400"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </motion.span>
                   </button>
-                </motion.div>
+                  <AnimatePresence>
+                    {activeFaq === idx && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="px-8 pb-8"
+                      >
+                        <p className="text-slate-400 leading-relaxed font-medium">
+                          {faq.answer}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               ))}
-            </div>
-
-            <div className="mt-20 text-center space-y-6">
-              <div className="flex flex-wrap justify-center gap-8 text-sm font-bold text-slate-400">
-                 <span className="flex items-center gap-2">
-                   <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                   14-day free trial
-                 </span>
-                 <span className="flex items-center gap-2">
-                   <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                   No contracts
-                 </span>
-                 <span className="flex items-center gap-2">
-                   <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                   Cancel anytime
-                 </span>
-              </div>
-              <p className="text-slate-500 text-sm font-medium">
-                Note: Traditional SEO agencies cost $3,000–$5,000/month for the same results.
-              </p>
             </div>
           </div>
         </section>
+
+        {/* Final CTA Section */}
+        <section className="relative z-10 px-6 py-32 bg-gradient-to-b from-slate-950 to-brand-950 overflow-hidden border-t border-white/5">
+          <div className="absolute inset-0 bg-grid opacity-10" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-brand-500/20 blur-[120px] rounded-full" />
+          
+          <div className="mx-auto max-w-4xl relative z-10 text-center">
+            <h2 className="text-5xl md:text-7xl font-display font-black text-white tracking-tighter mb-6 leading-tight">
+              Ready to Dominate <br /><span className="brand-text">AI Search?</span>
+            </h2>
+            <p className="text-slate-400 text-xl font-medium mb-12 max-w-2xl mx-auto">
+              Join 12,000+ businesses ranking on autopilot with RankAI. 
+            </p>
+
+            {/* URL Input CTA */}
+            <form onSubmit={handleAnalyze} className="relative max-w-xl mx-auto mb-6">
+              <label htmlFor="final-url-input" className="sr-only">Website URL</label>
+              <div className="relative group">
+                <input
+                  id="final-url-input"
+                  type="text"
+                  placeholder="Enter your website URL..."
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full px-8 py-6 bg-slate-900/80 border border-white/10 rounded-2xl text-white placeholder-slate-500 font-bold focus:outline-none focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500/50 transition-all text-lg pr-44"
+                />
+                <button 
+                  type="submit"
+                  disabled={isLoading}
+                  className="absolute right-2 top-2 bottom-2 px-8 bg-brand-600 hover:bg-brand-500 disabled:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-widest transition-all duration-300 shadow-lg shadow-brand-500/20"
+                >
+                  {isLoading ? "Starting..." : "Get Started Free"}
+                </button>
+              </div>
+            </form>
+            <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">
+              No credit card required &bull; Takes 30 seconds
+            </p>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="relative z-10 bg-slate-950 border-t border-white/5 px-6 pt-24 pb-12 overflow-hidden">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 lg:gap-8 mb-20">
+              {/* Brand Column */}
+              <div className="col-span-2 lg:col-span-2 space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20 text-2xl font-black">
+                    ⚡
+                  </div>
+                  <span className="text-2xl font-display font-black tracking-tight text-white uppercase italic">Rank AI</span>
+                </div>
+                <p className="text-slate-400 font-medium leading-relaxed max-w-xs">
+                  Rank on Google, ChatGPT & Perplexity. Automatically.
+                </p>
+                <div className="flex gap-4 items-center pt-4">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/5 rounded-full border border-emerald-500/20">
+                    <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">GDPR Compliant</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-brand-500/5 rounded-full border border-brand-500/20">
+                    <svg className="w-4 h-4 text-brand-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.9L9.003 9.122 15.836 4.9 9.003 1.057 2.166 4.9zM15.836 4.9l-.001 7.236-6.833 3.868V9.122l6.834-4.222zM9.002 9.122v6.982L2.167 12.138V4.9l6.835 4.222z" clipRule="evenodd" /></svg>
+                    <span className="text-[10px] font-black text-brand-400 uppercase tracking-widest leading-none">Secure Payments</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product */}
+              <div className="space-y-6">
+                <h4 className="text-white font-black uppercase text-xs tracking-widest">Product</h4>
+                <ul className="space-y-4 text-sm font-medium text-slate-500">
+                  <li><button className="hover:text-brand-400 transition-colors">Features</button></li>
+                  <li><button className="hover:text-brand-400 transition-colors">Pricing</button></li>
+                  <li><button className="hover:text-brand-400 transition-colors">Dashboard</button></li>
+                  <li><button className="hover:text-brand-400 transition-colors underline decoration-brand-500/50">Early Access</button></li>
+                </ul>
+              </div>
+
+              {/* Company */}
+              <div className="space-y-6">
+                <h4 className="text-white font-black uppercase text-xs tracking-widest">Company</h4>
+                <ul className="space-y-4 text-sm font-medium text-slate-500">
+                  <li><button className="hover:text-brand-400 transition-colors">About Us</button></li>
+                  <li><button className="hover:text-brand-400 transition-colors">Careers</button></li>
+                  <li><button className="hover:text-brand-400 transition-colors italic">The Vision</button></li>
+                </ul>
+              </div>
+
+              {/* Legal */}
+              <div className="space-y-6">
+                <h4 className="text-white font-black uppercase text-xs tracking-widest">Legal</h4>
+                <ul className="space-y-4 text-sm font-medium text-slate-500">
+                  <li><button className="hover:text-brand-400 transition-colors">Privacy Policy</button></li>
+                  <li><button className="hover:text-brand-400 transition-colors">Terms of Service</button></li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+              <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">
+                &copy; 2026 RankAI. All rights reserved.
+              </p>
+              <div className="flex gap-8 items-center">
+                 <button className="text-slate-600 hover:text-white transition-colors flex items-center gap-2">
+                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.84 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>
+                   <span className="text-[10px] font-black uppercase tracking-widest">Twitter</span>
+                 </button>
+                 <button className="text-slate-600 hover:text-white transition-colors flex items-center gap-2">
+                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                   <span className="text-[10px] font-black uppercase tracking-widest">LinkedIn</span>
+                 </button>
+              </div>
+            </div>
+          </div>
+        </footer>
       </main>
     </>
   );
