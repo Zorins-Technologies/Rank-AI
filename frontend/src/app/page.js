@@ -597,6 +597,109 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* AEO Section */}
+        <section className="relative z-10 px-6 py-32 bg-[#020617] border-t border-white/5">
+          <div className="mx-auto max-w-7xl">
+            <div className="text-center mb-20 space-y-4">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-4">
+                 Answer Engine Optimization
+              </span>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-white tracking-tight">
+                The Future of SEO is <span className="text-emerald-400">AEO</span>
+              </h2>
+              <p className="text-slate-400 text-xl max-w-2xl mx-auto font-medium">
+                Traditional SEO ranks you on Google. RankAI puts you inside AI answers.
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start max-w-6xl mx-auto">
+              
+              {/* Left Column - Traditional SEO */}
+              <div className="glass-card p-10 bg-slate-900/40 border-white/5 relative overflow-hidden group h-full">
+                <div className="flex items-center justify-between mb-8 pb-8 border-b border-white/5">
+                   <h3 className="text-2xl font-display font-black text-slate-300">Traditional SEO</h3>
+                   <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-400">
+                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                   </div>
+                </div>
+                
+                <ul className="space-y-6">
+                   {[
+                     "Rankings on Google only",
+                     "Slow results (6-12 months)",
+                     "No AI visibility",
+                     "Requires constant manual work"
+                   ].map((item, i) => (
+                     <li key={i} className="flex items-center gap-4 text-slate-400 font-medium">
+                        <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
+                           <span className="text-[10px]">❌</span>
+                        </div>
+                        {item}
+                     </li>
+                   ))}
+                </ul>
+              </div>
+
+              {/* Right Column - RankAI AEO */}
+              <div className="glass-card p-10 bg-slate-900 shadow-[0_0_40px_rgba(16,185,129,0.1)] border-emerald-500/30 relative overflow-hidden group h-full">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-brand-500/5 to-transparent" />
+                
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="flex items-center justify-between mb-8 pb-8 border-b border-emerald-500/20">
+                     <h3 className="text-2xl font-display font-black text-white">RankAI <span className="text-emerald-400">(SEO + AEO)</span></h3>
+                     <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                     </div>
+                  </div>
+                  
+                  <ul className="space-y-6 mb-10 flex-grow">
+                     {[
+                       "Appears in ChatGPT, Gemini, Perplexity",
+                       "Automated content + backlinks",
+                       "Structured data (FAQ, schema)",
+                       "AI-driven authority building"
+                     ].map((item, i) => (
+                       <li key={i} className="flex items-center gap-4 text-slate-200 font-bold">
+                          <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-400">
+                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                          </div>
+                          {item}
+                       </li>
+                     ))}
+                  </ul>
+
+                  <div className="p-5 rounded-2xl bg-[#020617]/80 border border-emerald-500/20 flex flex-col sm:flex-row items-center gap-5 mt-auto">
+                    <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex shrink-0 items-center justify-center border border-emerald-500/40 shadow-lg shadow-emerald-500/20">
+                      <span className="text-2xl">📈</span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Impact Metric</p>
+                      <p className="text-sm font-medium text-slate-200 leading-snug">
+                         Your brand appears in <span className="text-emerald-400 font-black">34% of AI-generated answers</span> for your niche.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-16 text-center">
+              <button 
+                onClick={() => {
+                  const input = document.getElementById("url-input");
+                  if (input) {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => input.focus(), 800);
+                  }
+                }}
+                className="btn-brand hover:scale-105"
+              >
+                Start Ranking in AI Answers
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* Feature Grid */}
         <section className="relative z-10 px-6 pb-40">
           <div className="mx-auto max-w-7xl">
