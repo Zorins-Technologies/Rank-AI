@@ -44,6 +44,27 @@ const pricingPlans = [
   }
 ];
 
+const dashboardMockData = {
+  Articles: [
+    { title: "The Ultimate Guide to Automated SEO in 2026", status: "Published", seoScore: 98, aeoScore: 95 },
+    { title: "Why AI Search is Replacing Traditional Algorithms", status: "Scheduled", seoScore: 92, aeoScore: 88 },
+    { title: "10 Frameworks for Scaling Content Output", status: "Published", seoScore: 95, aeoScore: 90 },
+    { title: "How Entity Optimization Drives Traffic", status: "Drafting", seoScore: 85, aeoScore: 82 }
+  ],
+  Backlinks: [
+    { platform: "Medium", domainAuthority: 95, status: "Live" },
+    { platform: "Reddit (Subreddit: r/SEO)", domainAuthority: 90, status: "Live" },
+    { platform: "Tech Startup Blog (Guest Post)", domainAuthority: 68, status: "Processing" },
+    { platform: "IndieHackers", domainAuthority: 82, status: "Live" }
+  ],
+  AIVisibility: {
+    overallScore: 84,
+    chatgpt: 92,
+    perplexity: 88,
+    gemini: 72
+  }
+};
+
 const testimonials = [
   {
     name: "James Wilson",
@@ -97,6 +118,7 @@ export default function HomePage() {
   const [activeEngine, setActiveEngine] = useState("ChatGPT");
   const [targetSite, setTargetSite] = useState("yourwebsite.com");
   const [isAnnual, setIsAnnual] = useState(false);
+  const [activeDashboardTab, setActiveDashboardTab] = useState("Articles");
   const router = useRouter();
 
   useEffect(() => {
@@ -586,6 +608,227 @@ export default function HomePage() {
                     <p className="text-slate-400 leading-relaxed font-medium">{feature.desc}</p>
                  </motion.div>
                ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Dashboard Preview Section */}
+        <section className="relative z-10 px-6 py-32 border-t border-white/5 bg-[#020617]">
+          <div className="mx-auto max-w-6xl">
+            <div className="text-center mb-16 space-y-4">
+              <h2 className="text-4xl md:text-5xl font-display font-black text-white tracking-tight">
+                See RankAI in <span className="brand-text">Action</span>
+              </h2>
+              <p className="text-slate-400 text-lg max-w-2xl mx-auto font-medium">
+                A powerful dashboard that automates your entire SEO and AI ranking workflow
+              </p>
+            </div>
+
+            {/* Browser Mockup */}
+            <div className="glass-card rounded-[2rem] border border-white/10 bg-slate-900/60 shadow-2xl overflow-hidden relative">
+              
+              {/* Browser Header */}
+              <div className="bg-slate-900/80 px-4 py-3 border-b border-white/5 flex items-center justify-between">
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                </div>
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 bg-slate-800 rounded-md border border-white/5 text-[10px] text-slate-400 font-medium">
+                   <svg className="w-3 h-3 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                   app.rankai.com
+                </div>
+                <div className="relative group cursor-pointer flex items-center gap-2">
+                   <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                   </span>
+                   <div className="absolute -top-8 -right-4 w-max px-2 py-1 bg-slate-800 text-slate-300 text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                     Updated in real-time
+                   </div>
+                </div>
+              </div>
+
+              {/* Dashboard Content */}
+              <div className="p-6 md:p-10 min-h-[400px]">
+                
+                {/* Tabs */}
+                <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 pb-2 border-b border-white/5">
+                  {["Articles", "Backlinks", "AI Visibility"].map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveDashboardTab(tab)}
+                      className={`relative px-4 py-2 text-sm font-bold transition-colors whitespace-nowrap ${
+                        activeDashboardTab === tab ? "text-white" : "text-slate-500 hover:text-slate-300"
+                      }`}
+                    >
+                      {activeDashboardTab === tab && (
+                        <motion.div
+                          layoutId="dashboardTab"
+                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-500"
+                          transition={{ type: "spring", duration: 0.5 }}
+                        />
+                      )}
+                      <span>{tab}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tab Panels */}
+                <AnimatePresence mode="wait">
+                  {activeDashboardTab === "Articles" && (
+                    <motion.div
+                      key="Articles"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-x-auto"
+                    >
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="text-slate-500 border-b border-white/5">
+                            <th className="pb-3 font-medium px-4">Title</th>
+                            <th className="pb-3 font-medium px-4">Status</th>
+                            <th className="pb-3 font-medium px-4 text-center">SEO Score</th>
+                            <th className="pb-3 font-medium px-4 text-center">AEO Score</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-slate-300 font-medium">
+                          {dashboardMockData.Articles.map((row, i) => (
+                            <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-4 px-4">{row.title}</td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2 py-1 rounded text-[10px] uppercase font-black tracking-widest ${
+                                  row.status === "Published" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : 
+                                  row.status === "Scheduled" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                                  "bg-slate-500/10 text-slate-400 border border-slate-500/20"
+                                }`}>
+                                  {row.status}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4 text-center">
+                                <span className={`px-2 py-1 rounded font-bold ${row.seoScore > 90 ? "text-emerald-400 bg-emerald-500/5" : "text-amber-400 bg-amber-500/5"}`}>
+                                  {row.seoScore}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4 text-center">
+                                <span className={`px-2 py-1 rounded font-bold ${row.aeoScore > 90 ? "text-emerald-400 bg-emerald-500/5" : "text-amber-400 bg-amber-500/5"}`}>
+                                  {row.aeoScore}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </motion.div>
+                  )}
+
+                  {activeDashboardTab === "Backlinks" && (
+                    <motion.div
+                      key="Backlinks"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-x-auto"
+                    >
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="text-slate-500 border-b border-white/5">
+                            <th className="pb-3 font-medium px-4">Platform</th>
+                            <th className="pb-3 font-medium px-4 text-center">DA Score</th>
+                            <th className="pb-3 font-medium px-4">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-slate-300 font-medium">
+                          {dashboardMockData.Backlinks.map((row, i) => (
+                            <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-4 px-4 flex items-center gap-3">
+                                <div className="w-6 h-6 rounded bg-slate-800 flex items-center justify-center text-xs border border-white/5">🔗</div>
+                                {row.platform}
+                              </td>
+                              <td className="py-4 px-4 text-center">
+                                <span className="text-white font-bold">{row.domainAuthority}</span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2 py-1 rounded text-[10px] uppercase font-black tracking-widest ${
+                                  row.status === "Live" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-brand-500/10 text-brand-400 border border-brand-500/20"
+                                }`}>{row.status}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </motion.div>
+                  )}
+
+                  {activeDashboardTab === "AI Visibility" && (
+                    <motion.div
+                      key="AIVisibility"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.3 }}
+                      className="space-y-8 max-w-3xl"
+                    >
+                      <div className="glass-card bg-brand-500/5 border-brand-500/20 p-6 flex items-center justify-between">
+                         <div>
+                           <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Overall AI Visibility</p>
+                           <p className="text-4xl font-display font-black text-white">{dashboardMockData.AIVisibility.overallScore}%</p>
+                         </div>
+                         <div className="w-24 h-24 relative">
+                           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                              <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+                              <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgb(99,102,241)" strokeWidth="3" strokeDasharray={`${dashboardMockData.AIVisibility.overallScore}, 100`} />
+                           </svg>
+                           <div className="absolute inset-0 flex items-center justify-center text-brand-400 font-bold">Good</div>
+                         </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        {[
+                          { name: "ChatGPT Mention Index", val: dashboardMockData.AIVisibility.chatgpt, color: "bg-emerald-500" },
+                          { name: "Perplexity Citation Rate", val: dashboardMockData.AIVisibility.perplexity, color: "bg-brand-500" },
+                          { name: "Gemini Ranking", val: dashboardMockData.AIVisibility.gemini, color: "bg-purple-500" }
+                        ].map(engine => (
+                          <div key={engine.name}>
+                            <div className="flex justify-between text-sm font-bold mb-2">
+                              <span className="text-slate-300">{engine.name}</span>
+                              <span className="text-white">{engine.val}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                whileInView={{ width: `${engine.val}%` }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 1, ease: "easeOut" }}
+                                className={`h-full ${engine.color}`} 
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+              </div>
+            </div>
+
+            <div className="mt-12 text-center">
+              <button 
+                onClick={() => {
+                  const input = document.getElementById("url-input");
+                  if (input) {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => input.focus(), 800);
+                  }
+                }}
+                className="btn-brand px-10"
+              >
+                Start Automating Your SEO
+              </button>
             </div>
           </div>
         </section>
