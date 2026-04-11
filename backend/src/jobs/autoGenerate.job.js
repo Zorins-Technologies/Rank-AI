@@ -15,21 +15,25 @@ async function runAutoGenerateJob() {
   console.log("[AutoGenerate Job] Running scheduled keyword automation...");
 
   try {
-    // Get all distinct users who have pending keywords
-    const { rows: userRows } = await db.query(
-      `SELECT DISTINCT user_id FROM keyword_research WHERE status = 'pending'`
+    // Get all distinct projects that have pending keywords
+    const { rows: projectRows } = await db.query(
+      `SELECT DISTINCT p.id as project_id, p.user_id 
+       FROM keyword_research kr 
+       JOIN projects p ON kr.project_id = p.id
+       WHERE kr.status = 'pending' AND p.status = 'active'`
     );
 
-    if (userRows.length === 0) {
-      console.log("[AutoGenerate Job] No pending keywords found. Sleeping until next run.");
+    if (projectRows.length === 0) {
+      console.log("[AutoGenerate Job] No pending keywords for active projects. Sleeping.");
       return;
     }
 
-    console.log(`[AutoGenerate Job] Processing ${userRows.length} user(s) with pending keywords.`);
+    console.log(`[AutoGenerate Job] Processing ${projectRows.length} project(s) with pending keywords.`);
 
-    for (const { user_id } of userRows) {
+    for (const { project_id, user_id } of projectRows) {
       try {
-        // Check how many blogs this user has already generated today
+        // Check how many blogs this user/project has already generated today
+        // (Global daily limit of 5 per user still applies for now)
         const { rows: [limitRow] } = await db.query(
           `SELECT COUNT(*) as cnt FROM keyword_research
            WHERE user_id = $1 AND status = 'generated'
@@ -45,16 +49,16 @@ async function runAutoGenerateJob() {
           continue;
         }
 
-        // Fetch the oldest pending keywords up to the remaining slots
+        // Fetch the oldest pending keywords for THIS project up to the remaining slots
         const { rows: pendingKeywords } = await db.query(
           `SELECT * FROM keyword_research
-           WHERE user_id = $1 AND status = 'pending'
+           WHERE project_id = $1 AND status = 'pending'
            ORDER BY created_at ASC
            LIMIT $2`,
-          [user_id, slotsAvailable]
+          [project_id, slotsAvailable]
         );
 
-        console.log(`[AutoGenerate Job] User ${user_id}: ${slotsAvailable} slot(s) available, processing ${pendingKeywords.length} keyword(s).`);
+        console.log(`[AutoGenerate Job] Project ${project_id}: ${slotsAvailable} slot(s) available, processing ${pendingKeywords.length} keyword(s).`);
 
         for (const kw of pendingKeywords) {
           try {
@@ -79,9 +83,9 @@ async function runAutoGenerateJob() {
             const slug = generateUniqueSlug(blogData.title, slugRows.map(r => r.slug));
 
             const { rows: [savedBlog] } = await db.query(
-              `INSERT INTO blogs (user_id, title, content, meta_description, keyword, image_url, slug, analysis, faq)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-              [user_id, blogData.title, blogData.content, blogData.metaDescription,
+              `INSERT INTO blogs (user_id, project_id, title, content, meta_description, keyword, image_url, slug, analysis, faq)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+              [user_id, project_id, blogData.title, blogData.content, blogData.metaDescription,
                kw.keyword, blogData.imageUrl, slug,
                JSON.stringify(analysis), JSON.stringify(blogData.faq || [])]
             );

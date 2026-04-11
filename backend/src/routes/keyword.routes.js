@@ -13,14 +13,18 @@ const db = require("../services/sql.service");
 // Skips duplicates for the same user via the unique DB index.
 router.post("/research", verifyToken, generationLimiter, async (req, res) => {
   try {
-    const { niche } = req.body;
+    const { niche, project_id } = req.body;
     const userId = req.user.uid;
 
-    if (!niche || !niche.trim()) {
-      return res.status(400).json({ success: false, error: "niche is required" });
+    if (!niche || !niche.trim() || !project_id) {
+      return res.status(400).json({ success: false, error: "niche and project_id are required" });
     }
 
-    console.log(`[Keywords] Researching niche: "${niche}" for user: ${userId}`);
+    // Verify project ownership
+    const { rows: projectRows } = await db.query(`SELECT id FROM projects WHERE id = $1 AND user_id = $2`, [project_id, userId]);
+    if (projectRows.length === 0) return res.status(403).json({ success: false, error: "Project not found or access denied." });
+
+    console.log(`[Keywords] Researching niche: "${niche}" for project: ${project_id}`);
 
     const keywords = await researchKeywords(niche.trim());
 
@@ -29,11 +33,11 @@ router.post("/research", verifyToken, generationLimiter, async (req, res) => {
     for (const kw of keywords) {
       try {
         const { rows } = await db.query(
-          `INSERT INTO keyword_research (user_id, niche, keyword, search_volume, difficulty, intent)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO keyword_research (user_id, project_id, niche, keyword, search_volume, difficulty, intent)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (user_id, keyword) DO NOTHING
            RETURNING *`,
-          [userId, niche.trim(), kw.keyword, kw.search_volume || 0, kw.difficulty || "medium", kw.intent || "informational"]
+          [userId, project_id, niche.trim(), kw.keyword, kw.search_volume || 0, kw.difficulty || "medium", kw.intent || "informational"]
         );
         if (rows[0]) insertedKeywords.push(rows[0]);
       } catch (dbErr) {
@@ -59,11 +63,15 @@ router.post("/research", verifyToken, generationLimiter, async (req, res) => {
 router.get("/", verifyToken, async (req, res) => {
   try {
     const userId = req.user.uid;
-    const { niche, status } = req.query;
+    const { niche, status, project_id } = req.query;
 
     let query = `SELECT * FROM keyword_research WHERE user_id = $1`;
     const params = [userId];
 
+    if (project_id) {
+      params.push(project_id);
+      query += ` AND project_id = $${params.length}`;
+    }
     if (niche) {
       params.push(`%${niche}%`);
       query += ` AND niche ILIKE $${params.length}`;
@@ -150,9 +158,9 @@ router.post("/:id/generate", verifyToken, generationLimiter, async (req, res) =>
         const slug = generateUniqueSlug(blogData.title, slugRows.map(r => r.slug));
 
         const { rows: [savedBlog] } = await db.query(
-          `INSERT INTO blogs (user_id, title, content, meta_description, keyword, image_url, slug, analysis, faq)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-          [userId, blogData.title, blogData.content, blogData.metaDescription,
+          `INSERT INTO blogs (user_id, project_id, title, content, meta_description, keyword, image_url, slug, analysis, faq)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+          [userId, kw.project_id, blogData.title, blogData.content, blogData.metaDescription,
            kw.keyword, blogData.imageUrl, slug,
            JSON.stringify(analysis), JSON.stringify(blogData.faq || [])]
         );

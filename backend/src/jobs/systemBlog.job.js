@@ -28,91 +28,110 @@ const FORMATS = [
 
 /**
  * Main Autonomous Job Function
- * Researches, generates, and publishes one high-quality blog post.
+ * Researches, generates, and publishes blog posts for ALL active projects.
  */
 async function runDailySystemBlog() {
   const jobStartTime = new Date().toISOString();
   console.log(`\n[AUTONOMOUS JOB] Starting Daily Cycle: ${jobStartTime}`);
 
   try {
-    // 1. SELECT NICHE (Rotating based on day of month)
+    // 1. FETCH ALL ACTIVE PROJECTS
+    const { rows: projects } = await db.query(
+      "SELECT * FROM projects WHERE status = 'active'"
+    );
+
+    if (projects.length === 0) {
+      console.log("[AUTONOMOUS JOB] No active projects found. Cycle complete.");
+      return;
+    }
+
+    console.log(`[AUTONOMOUS JOB] Found ${projects.length} active project(s). Processing...`);
+
     const dayOfMonth = new Date().getDate();
-    const niche = NICHES[dayOfMonth % NICHES.length];
     const format = FORMATS[dayOfMonth % FORMATS.length];
-    
-    console.log(`[AUTONOMOUS JOB] Target Niche: "${niche}" | Target Format: "${format}"`);
 
-    // 2. RESEARCH KEYWORDS
-    console.log(`[AUTONOMOUS JOB] Fetching keywords for niche...`);
-    const keywords = await researchKeywords(niche);
+    for (const project of projects) {
+      try {
+        const { id: projectId, user_id: userId, niche_value: niche } = project;
+        console.log(`[AUTONOMOUS JOB] Processing Project: ${projectId} | Niche: "${niche}"`);
 
-    // 3. SELECTION (Pick the best unique keyword)
-    // Filter for easy/medium and sort by volume
-    const sortedKeywords = keywords
-      .filter(k => k.difficulty !== "hard")
-      .sort((a, b) => b.search_volume - a.search_volume);
+        // 2. RESEARCH KEYWORDS FOR THIS NICHE
+        const keywords = await researchKeywords(niche);
 
-    let selectedKw = null;
-    for (const kw of sortedKeywords) {
-      // Check if we've already generated a blog for this exact keyword
-      const { rows } = await db.query(
-        "SELECT id FROM blogs WHERE keyword = $1 LIMIT 1",
-        [kw.keyword.toLowerCase()]
-      );
-      if (rows.length === 0) {
-        selectedKw = kw;
-        break;
+        // 3. SELECTION (Pick the best unique keyword NOT already used in this project)
+        const sortedKeywords = keywords
+          .filter(k => k.difficulty !== "hard")
+          .sort((a, b) => b.search_volume - a.search_volume);
+
+        let selectedKw = null;
+        for (const kw of sortedKeywords) {
+          const { rows } = await db.query(
+            "SELECT id FROM blogs WHERE project_id = $1 AND keyword = $2 LIMIT 1",
+            [projectId, kw.keyword.toLowerCase()]
+          );
+          if (rows.length === 0) {
+            selectedKw = kw;
+            break;
+          }
+        }
+
+        if (!selectedKw) {
+          console.warn(`[AUTONOMOUS JOB] No unique keywords for project ${projectId}. Skipping.`);
+          continue;
+        }
+
+        console.log(`[AUTONOMOUS JOB] Selected: "${selectedKw.keyword}" for Project ${projectId}`);
+
+        // 4. GENERATE CONTENT
+        const blogData = await generateBlog(`${selectedKw.keyword} (${format})`);
+        
+        // 5. SEO & SLUG
+        const analysis = calculateSeoScore({
+          title: blogData.title,
+          metaDescription: blogData.metaDescription,
+          content: blogData.content,
+          keyword: selectedKw.keyword,
+        });
+
+        const { rows: slugRows } = await db.query("SELECT slug FROM blogs WHERE user_id = $1", [userId]);
+        const slug = generateUniqueSlug(blogData.title, slugRows.map(r => r.slug));
+
+        // 6. SAVE & PUBLISH
+        const insertQuery = `
+          INSERT INTO blogs (
+            user_id, project_id, title, content, meta_description, keyword, image_url, slug, analysis, faq, status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING *
+        `;
+        
+        const { rows: [savedBlog] } = await db.query(insertQuery, [
+          userId,
+          projectId,
+          blogData.title,
+          blogData.content,
+          blogData.metaDescription,
+          selectedKw.keyword.toLowerCase(),
+          blogData.imageUrl,
+          slug,
+          JSON.stringify(analysis),
+          JSON.stringify(blogData.faq || []),
+          "published"
+        ]);
+
+        console.log(`[AUTONOMOUS JOB] ✅ Published: ${savedBlog.title} (Project: ${projectId})`);
+
+        // 7. TRIGGER INDEXING (Async)
+        triggerIndexing(savedBlog.slug);
+
+        // Optional delay to respect rate limits between projects
+        await new Promise(r => setTimeout(r, 2000));
+
+      } catch (projectErr) {
+        console.error(`[AUTONOMOUS JOB] ❌ Error processing project ${project.id}:`, projectErr.message);
       }
-      console.log(`[AUTONOMOUS JOB] Skipping duplicate keyword: "${kw.keyword}"`);
     }
 
-    if (!selectedKw) {
-       console.warn("[AUTONOMOUS JOB] No unique keywords found in this niche today. Skipping.");
-       return;
-    }
-
-    console.log(`[AUTONOMOUS JOB] Selected Optimal Keyword: "${selectedKw.keyword}" (Vol: ${selectedKw.search_volume})`);
-
-    // 4. GENERATE CONTENT
-    console.log(`[AUTONOMOUS JOB] Generating high-quality content...`);
-    const blogData = await generateBlog(`${selectedKw.keyword} (${format})`);
-    
-    // 5. SEO & SLUG
-    const analysis = calculateSeoScore({
-      title: blogData.title,
-      metaDescription: blogData.metaDescription,
-      content: blogData.content,
-      keyword: selectedKw.keyword,
-    });
-
-    const { rows: slugRows } = await db.query("SELECT slug FROM blogs WHERE user_id = $1", [SYSTEM_USER_ID]);
-    const slug = generateUniqueSlug(blogData.title, slugRows.map(r => r.slug));
-
-    // 6. SAVE & PUBLISH
-    const insertQuery = `
-      INSERT INTO blogs (
-        user_id, title, content, meta_description, keyword, image_url, slug, analysis, faq, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *
-    `;
-    
-    const { rows: [savedBlog] } = await db.query(insertQuery, [
-      SYSTEM_USER_ID,
-      blogData.title,
-      blogData.content,
-      blogData.metaDescription,
-      selectedKw.keyword.toLowerCase(),
-      blogData.imageUrl,
-      slug,
-      JSON.stringify(analysis),
-      JSON.stringify(blogData.faq || []),
-      "published"
-    ]);
-
-    console.log(`[AUTONOMOUS JOB] ✅ Successfully Published: ${savedBlog.title} | Slug: ${savedBlog.slug}`);
-
-    // 7. TRIGGER INDEXING
-    await triggerIndexing(savedBlog.slug);
+    console.log(`[AUTONOMOUS JOB] ✅ Full Cycle Complete: ${new Date().toISOString()}`);
 
   } catch (error) {
     console.error(`[AUTONOMOUS JOB] ❌ Fatal Error during autonomous cycle:`, error.message);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import BlogCard from "../../components/BlogCard";
 import BlogCardSkeleton from "../../components/BlogCardSkeleton";
@@ -19,6 +19,8 @@ export default function BlogsPage() {
   const [nextCursor, setNextCursor] = useState(null);
   const [error, setError] = useState(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const project_id = searchParams.get("project_id");
 
   const loadBlogs = useCallback(async (isInitial = true, cursor = null) => {
     if (!user) return;
@@ -30,7 +32,7 @@ export default function BlogsPage() {
     try {
       const token = await user.getIdToken();
       // fetchBlogs now returns { success, data, nextCursor } OR throws
-      const response = await fetchBlogs(isInitial ? searchTerm : "", cursor, token);
+      const response = await fetchBlogs(isInitial ? searchTerm : "", cursor, token, project_id);
       
       if (response && response.success) {
         const newBlogs = Array.isArray(response.data) ? response.data : [];
@@ -50,7 +52,7 @@ export default function BlogsPage() {
       if (isInitial) setLoading(false);
       else setLoadingMore(false);
     }
-  }, [searchTerm, user]);
+  }, [searchTerm, user, project_id]);
 
   useEffect(() => {
     if (user) {
@@ -84,8 +86,8 @@ export default function BlogsPage() {
                 Intelligence Library
               </motion.div>
               <h1 className="text-5xl sm:text-7xl font-display font-black leading-[0.9] tracking-tighter gradient-text">
-                Your AI Engine <br />
-                <span className="brand-text">Output.</span>
+                {project_id ? "Project " : "Your AI Engine "} <br />
+                <span className="brand-text">{project_id ? "Articles." : "Output."}</span>
               </h1>
             </div>
 

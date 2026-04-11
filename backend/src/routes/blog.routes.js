@@ -178,41 +178,47 @@ router.post("/generate-image", verifyToken, generationLimiter, validateTitle, as
 
 router.get("/blogs", optionalVerifyToken, async (req, res) => {
   try {
-    const { search, status } = req.query;
+    const { search, status, project_id } = req.query;
     const userId = req.user?.uid;
     let query;
     let params;
 
-    // Public Sitemap/Library Access
+    // 1. PUBLIC SITEMAP / LIBRARY ACCESS
     if (status === 'published' && !userId) {
       console.log(`[Route] GET /api/blogs - Public Fetch (Published Only)`);
-      query = `
-        SELECT id, user_id, title, meta_description, keyword, image_url, slug, status, created_at, updated_at
-        FROM blogs 
-        WHERE status = 'published'
-        ORDER BY created_at DESC
-      `;
+      query = `SELECT * FROM blogs WHERE status = 'published' ORDER BY created_at DESC`;
       params = [];
     } 
-    // Authenticated Dashboard Access
+    // 2. AUTHENTICATED DASHBOARD ACCESS
     else if (userId) {
-      if (search) {
-        console.log(`[Route] GET /api/blogs - Search: "${search}" - User: ${userId}`);
+      if (project_id) {
+        // FILTER BY PROJECT: Ensures isolated site view
+        console.log(`[Route] GET /api/blogs - Project: ${project_id} - User: ${userId}`);
+        
+        // Ownership check join
         query = `
-          SELECT * FROM blogs 
-          WHERE user_id = $1 
-          AND (title ILIKE $2 OR keyword ILIKE $2 OR content ILIKE $2)
-          ORDER BY created_at DESC
+          SELECT b.* FROM blogs b
+          JOIN projects p ON b.project_id = p.id
+          WHERE p.user_id = $1 AND b.project_id = $2
         `;
-        params = [userId, `%${search}%` || ''];
+        params = [userId, project_id];
+
+        if (search) {
+          query += ` AND (b.title ILIKE $3 OR b.keyword ILIKE $3)`;
+          params.push(`%${search}%`);
+        }
+        query += ` ORDER BY b.created_at DESC`;
       } else {
-        console.log(`[Route] GET /api/blogs - Fetch All - User: ${userId}`);
-        query = `
-          SELECT * FROM blogs 
-          WHERE user_id = $1 
-          ORDER BY created_at DESC
-        `;
+        // DEFAULT FETCH ALL USER BLOGS
+        console.log(`[Route] GET /api/blogs - All User Content - User: ${userId}`);
+        query = `SELECT * FROM blogs WHERE user_id = $1`;
         params = [userId];
+
+        if (search) {
+          query += ` AND (title ILIKE $2 OR keyword ILIKE $2)`;
+          params.push(`%${search}%`);
+        }
+        query += ` ORDER BY created_at DESC`;
       }
     } else {
       return res.status(401).json({ success: false, error: "Authentication required." });

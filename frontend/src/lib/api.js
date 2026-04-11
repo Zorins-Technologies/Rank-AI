@@ -91,10 +91,11 @@ export async function generateBlog(keyword, token) {
   }
 }
 
-export async function fetchBlogs(searchTerm = "", cursor = "", token) {
+export async function fetchBlogs(searchTerm = "", cursor = "", token, project_id = "") {
   let url = `${API_URL}/blogs?`;
   if (searchTerm) url += `search=${encodeURIComponent(searchTerm)}&`;
-  if (cursor) url += `cursor=${encodeURIComponent(cursor)}`;
+  if (cursor) url += `cursor=${encodeURIComponent(cursor)}&`;
+  if (project_id) url += `project_id=${encodeURIComponent(project_id)}`;
   
   if (url.endsWith('?') || url.endsWith('&')) {
     url = url.slice(0, -1);
@@ -168,5 +169,65 @@ export async function generateFromKeyword(keywordId, token) {
   } catch (err) {
     console.error("API ERROR:", err);
     return { success: false, error: "Failed to start generation. Please try again." };
+  }
+}
+
+// ─── Project Management API ──────────────────────────────────────────────────
+
+export async function fetchProjects(token) {
+  console.log(`[API] Fetching all projects...`);
+  try {
+    const res = await fetchWithRetry(`${API_URL}/api/projects`, { 
+      cache: "no-store",
+      headers: getHeaders(token) 
+    });
+    return await handleResponse(res, "FetchProjects");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    throw new Error("Failed to load projects.");
+  }
+}
+
+export async function createProject(data, token) {
+  console.log(`[API] Creating new project for: ${data.website_url}`);
+  try {
+    const res = await fetchWithRetry(`${API_URL}/api/projects`, {
+      method: "POST",
+      headers: getHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return await handleResponse(res, "CreateProject");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    throw new Error("Failed to create project. Check URL and niche.");
+  }
+}
+
+export async function updateProject(id, data, token) {
+  console.log(`[API] Updating project ${id}...`);
+  try {
+    const res = await fetchWithRetry(`${API_URL}/api/projects/${id}`, {
+      method: "PATCH",
+      headers: getHeaders(token),
+      body: JSON.stringify(data),
+    });
+    return await handleResponse(res, "UpdateProject");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    throw new Error("Failed to update project.");
+  }
+}
+
+export async function deleteProject(id, token) {
+  console.log(`[API] Deleting project ${id}...`);
+  try {
+    const res = await fetchWithRetry(`${API_URL}/api/projects/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(token),
+    });
+    return await handleResponse(res, "DeleteProject");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    throw new Error("Failed to delete project.");
   }
 }

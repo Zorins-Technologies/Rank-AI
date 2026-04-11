@@ -5,6 +5,7 @@ const config = require('./src/config');
 const db = require('./src/services/sql.service');
 const blogRoutes = require('./src/routes/blog.routes.js');
 const keywordRoutes = require('./src/routes/keyword.routes.js');
+const projectRoutes = require('./src/routes/project.routes.js');
 const { apiLimiter } = require('./src/middleware/rateLimit');
 const { startAutoGenerateJob } = require('./src/jobs/autoGenerate.job');
 const { startSystemBlogJob } = require('./src/jobs/systemBlog.job');
@@ -72,6 +73,7 @@ app.get('/health-db', async (req, res) => {
 // Business Logic Routes (SaaS)
 app.use('/', blogRoutes);
 app.use('/keywords', keywordRoutes);
+app.use('/api/projects', projectRoutes);
 
 // Compatibility fallback for root access
 app.get('/', (req, res) => {
@@ -101,6 +103,75 @@ app.use((err, req, res, next) => {
 async function runMigrations() {
   try {
     await db.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
+    // 1. Create Projects Table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id      TEXT NOT NULL,
+        website_url  TEXT NOT NULL,
+        niche_type   TEXT NOT NULL CHECK (niche_type IN ('preset', 'custom')),
+        niche_value  TEXT NOT NULL,
+        status       TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused')),
+        created_at   TIMESTAMPTZ DEFAULT NOW(),
+        updated_at   TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS projects_user_id_idx ON projects (user_id)`);
+
+    // 2. Update Keyword Research Table
+    await db.query(`ALTER TABLE keyword_research ADD COLUMN IF NOT EXISTS project_id UUID`);
+    // Foreign key will be added after migration to ensure safety
+    
+    // 3. Update Blogs Table
+    await db.query(`ALTER TABLE blogs ADD COLUMN IF NOT EXISTS project_id UUID`);
+
+    // 4. PERFORM DATA MIGRATION (Default Project for existing users)
+    console.log('[Migration] Checking for users needing a Default Project...');
+    
+    // Get unique users from both blogs and keyword_research who don't have a project yet
+    const { rows: orphanUsers } = await db.query(`
+      SELECT DISTINCT user_id FROM (
+        SELECT user_id FROM blogs WHERE project_id IS NULL
+        UNION
+        SELECT user_id FROM keyword_research WHERE project_id IS NULL
+      ) as orphans
+    `);
+
+    for (const { user_id } of orphanUsers) {
+      console.log(`[Migration] Creating Default Project for user: ${user_id}`);
+      // Check if user already has any project (defensive)
+      const { rows: projects } = await db.query(`SELECT id FROM projects WHERE user_id = $1 LIMIT 1`, [user_id]);
+      
+      let projectId;
+      if (projects.length === 0) {
+        const { rows: [newProject] } = await db.query(`
+          INSERT INTO projects (user_id, website_url, niche_type, niche_value, status)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING id
+        `, [user_id, 'https://default.com', 'preset', 'General', 'active']);
+        projectId = newProject.id;
+      } else {
+        projectId = projects[0].id;
+      }
+
+      // Update their records
+      await db.query(`UPDATE blogs SET project_id = $1 WHERE user_id = $2 AND project_id IS NULL`, [projectId, user_id]);
+      await db.query(`UPDATE keyword_research SET project_id = $1 WHERE user_id = $2 AND project_id IS NULL`, [projectId, user_id]);
+    }
+
+    // 5. Finalize Constraints (Once migration is done)
+    // Note: We only enforce NOT NULL if we are sure all orphans are cleared
+    try {
+       await db.query(`ALTER TABLE blogs ALTER COLUMN project_id SET NOT NULL`);
+       await db.query(`ALTER TABLE blogs ADD CONSTRAINT blogs_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE`);
+       await db.query(`ALTER TABLE keyword_research ADD CONSTRAINT keyword_research_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE`);
+       console.log('[Migration] Multi-tenant project constraints enforced.');
+    } catch (constErr) {
+       console.warn('[Migration] Constraints already exist or table is empty during constraint phase.');
+    }
+
+    // Existing Keyword Research table adjustments
     await db.query(`
       CREATE TABLE IF NOT EXISTS keyword_research (
         id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -116,15 +187,10 @@ async function runMigrations() {
         updated_at   TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-    await db.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS keyword_research_user_keyword_idx
-      ON keyword_research (user_id, keyword)
-    `);
-    await db.query(`
-      CREATE INDEX IF NOT EXISTS keyword_research_status_idx
-      ON keyword_research (user_id, status, created_at DESC)
-    `);
-    console.log('[Migration] keyword_research table ready.');
+    // Re-run original keyword project indexes if they were missing or needed update
+    await db.query(`CREATE INDEX IF NOT EXISTS keyword_research_project_idx ON keyword_research (project_id)`);
+
+    console.log('[Migration] Multi-tenant project system ready.');
   } catch (err) {
     console.error('[Migration] Error:', err.message);
   }
