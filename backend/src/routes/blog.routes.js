@@ -11,7 +11,7 @@ const { generateUniqueSlug } = require("../utils/slug");
 const { validateKeyword, validateTitle, validateId } = require("../middleware/validate");
 const { generationLimiter } = require("../middleware/rateLimit");
 
-const { verifyToken } = require("../middleware/auth.middleware");
+const { verifyToken, optionalVerifyToken } = require("../middleware/auth.middleware");
 
 router.post("/generate", verifyToken, generationLimiter, validateKeyword, async (req, res) => {
   console.log("REQUEST RECEIVED:", req.body);
@@ -208,22 +208,33 @@ router.get("/blogs", verifyToken, async (req, res) => {
   }
 });
 
-router.get("/blogs/:id", verifyToken, async (req, res) => {
+router.get("/blogs/:id", optionalVerifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.uid;
+    const userId = req.user?.uid; // May be undefined
 
-    // PostgreSQL query for either ID (UUID) or Slug
-    // We check if the ID is a valid UUID first, otherwise we treat it as a slug
+    // Determine if identifier is a UUID (Dashboard/Private) or Slug (SEO/Public)
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     
     let query;
-    let params = [userId, id];
+    let params;
 
     if (isUuid) {
+      // UUID access strictly requires ownership
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Authentication required for ID-based access." });
+      }
       query = "SELECT * FROM blogs WHERE user_id = $1 AND id = $2 LIMIT 1";
+      params = [userId, id];
     } else {
-      query = "SELECT * FROM blogs WHERE user_id = $1 AND slug = $2 LIMIT 1";
+      // Slug access: Allowed if published OR if authenticated owner
+      if (userId) {
+        query = "SELECT * FROM blogs WHERE slug = $1 AND (status = 'published' OR user_id = $2) LIMIT 1";
+        params = [id, userId];
+      } else {
+        query = "SELECT * FROM blogs WHERE slug = $1 AND status = 'published' LIMIT 1";
+        params = [id];
+      }
     }
 
     const { rows: [blog] } = await db.query(query, params);
@@ -231,7 +242,7 @@ router.get("/blogs/:id", verifyToken, async (req, res) => {
     if (!blog) {
       return res.status(404).json({
         success: false,
-        error: "Blog not found.",
+        error: "Blog not found or you don't have permission to view it.",
       });
     }
 
