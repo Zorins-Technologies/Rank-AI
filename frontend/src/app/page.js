@@ -65,9 +65,6 @@ const dashboardMockData = {
   }
 };
 
-  }
-];
-
 const faqs = [
   {
     question: "How is AEO different from SEO?",
@@ -1151,6 +1148,121 @@ export default function HomePage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing Section */}
+        <section className="relative z-10 px-6 py-32 border-t border-white/5 bg-slate-950">
+          <div className="mx-auto max-w-7xl">
+            <div className="text-center mb-16 space-y-4">
+              <h2 className="text-4xl md:text-6xl font-display font-black text-white tracking-tight">
+                Simple, Transparent Pricing
+              </h2>
+              <p className="text-slate-400 text-xl font-medium max-w-2xl mx-auto">
+                Start ranking on autopilot — without expensive SEO agencies.
+              </p>
+              
+              {/* Toggle */}
+              <div className="flex items-center justify-center gap-4 pt-8">
+                <span className={`text-sm font-bold ${!isAnnual ? "text-white" : "text-slate-500"}`}>Monthly</span>
+                <button 
+                  onClick={() => setIsAnnual(!isAnnual)}
+                  className="relative w-16 h-8 rounded-full bg-slate-800 border border-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                  aria-label="Toggle Annual Pricing"
+                >
+                  <motion.div 
+                    layout
+                    className="absolute top-1 bottom-1 w-6 bg-brand-500 rounded-full shadow-lg"
+                    initial={false}
+                    animate={{ left: isAnnual ? "36px" : "4px" }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-bold ${isAnnual ? "text-white" : "text-slate-500"}`}>Annual</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Save 40%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto items-start pt-8">
+              {pricingPlans.map((plan, idx) => (
+                <motion.div 
+                  key={plan.name}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1, duration: 0.5 }}
+                  className={`glass-card p-8 flex flex-col h-full transition-transform duration-300 hover:-translate-y-2 ${
+                    plan.popular ? "bg-slate-900 border-brand-500/50 shadow-[0_0_40px_rgba(99,102,241,0.15)] relative scale-100 lg:scale-105 z-10" : "bg-slate-900/60 border-white/5"
+                  }`}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-4 left-0 right-0 flex justify-center">
+                       <span className="px-4 py-1.5 bg-gradient-to-r from-brand-600 to-indigo-500 text-[10px] font-black uppercase tracking-widest text-white rounded-full shadow-lg ring-2 ring-[#020617]">
+                         Most Popular
+                       </span>
+                    </div>
+                  )}
+                  
+                  <div className="mb-8">
+                    <h3 className="text-2xl font-display font-black text-white mb-2">{plan.name}</h3>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-5xl font-display font-black text-white">
+                        ${isAnnual ? plan.annualPrice : plan.monthlyPrice}
+                      </span>
+                      <span className="text-slate-500 font-bold uppercase text-xs tracking-widest">/month</span>
+                    </div>
+                    {isAnnual && (
+                      <p className="text-emerald-400 text-xs font-bold mt-3 bg-emerald-500/10 inline-block px-2 py-1 rounded">
+                        Billed ${plan.annualPrice * 12} yearly
+                      </p>
+                    )}
+                  </div>
+
+                  <ul className="space-y-4 mb-10 flex-grow">
+                    {plan.features.map(feature => (
+                      <li key={feature} className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-brand-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-slate-300 font-medium text-base leading-snug">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-lg ${
+                    plan.popular 
+                      ? "bg-brand-600 text-white hover:bg-brand-500 shadow-brand-500/20 active:scale-95" 
+                      : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/5 active:scale-95"
+                  }`}>
+                    Start Free Trial
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="mt-20 text-center space-y-6">
+              <div className="flex flex-wrap justify-center gap-8 text-sm font-bold text-slate-400">
+                 <span className="flex items-center gap-2">
+                   <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                   14-day free trial
+                 </span>
+                 <span className="flex items-center gap-2">
+                   <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                   No contracts
+                 </span>
+                 <span className="flex items-center gap-2">
+                   <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                   Cancel anytime
+                 </span>
+              </div>
+              <p className="text-slate-500 text-sm font-medium">
+                Note: Traditional SEO agencies cost $3,000–$5,000/month for the same results.
+              </p>
             </div>
           </div>
         </section>
