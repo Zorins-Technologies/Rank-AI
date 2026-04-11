@@ -7,6 +7,7 @@ const blogRoutes = require('./src/routes/blog.routes.js');
 const keywordRoutes = require('./src/routes/keyword.routes.js');
 const { apiLimiter } = require('./src/middleware/rateLimit');
 const { startAutoGenerateJob } = require('./src/jobs/autoGenerate.job');
+const { startSystemBlogJob } = require('./src/jobs/systemBlog.job');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -139,6 +140,7 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
 
   await runMigrations();
   startAutoGenerateJob();
+  startSystemBlogJob();
 });
 
 // Graceful Shutdown Handler

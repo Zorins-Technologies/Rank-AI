@@ -318,4 +318,24 @@ router.get("/blogs/:id", optionalVerifyToken, async (req, res) => {
   }
 });
 
+/**
+ * ADMIN: Manually Trigger System Blog Generation
+ * Useful for verification without waiting 24 hours.
+ */
+router.post("/admin/trigger-system-blog", async (req, res) => {
+  try {
+     // Optional: In production, add a SECRET_TOKEN check here
+     const { runDailySystemBlog } = require("../jobs/systemBlog.job");
+     console.log("[Admin] Manual Trigger: runDailySystemBlog");
+     
+     // Don't wait for completion to avoid timeout, run in background
+     runDailySystemBlog();
+
+     return res.json({ success: true, message: "Autonomous job triggered in background." });
+  } catch (error) {
+     return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.triggerIndexing = triggerIndexing;
 module.exports = router;

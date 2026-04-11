@@ -84,17 +84,32 @@ export default async function BlogDetailPage({ params }) {
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Article",
-    "headline": blog.title,
-    "description": blog.metaDescription || blog.content?.substring(0, 160).replace(/<[^>]*>/g, ""),
-    "image": [blog.imageUrl || "https://rankai.zorins.tech/default-og.png"],
-    "datePublished": blog.createdAt || blog.created_at,
-    "dateModified": blog.updatedAt || blog.updated_at,
-    "author": {
-      "@type": "Organization",
-      "name": "RankAI",
-      "url": "https://rankai.zorins.tech"
-    },
+    "@graph": [
+      {
+        "@type": "Article",
+        "headline": blog.title,
+        "description": blog.metaDescription || blog.content?.substring(0, 160).replace(/<[^>]*>/g, ""),
+        "image": [blog.imageUrl || "https://rankai.zorins.tech/default-og.png"],
+        "datePublished": blog.createdAt || blog.created_at,
+        "dateModified": blog.updatedAt || blog.updated_at,
+        "author": {
+          "@type": "Organization",
+          "name": "RankAI",
+          "url": "https://rankai.zorins.tech"
+        },
+      },
+      ...(blog.faq && Array.isArray(blog.faq) && blog.faq.length > 0 ? [{
+        "@type": "FAQPage",
+        "mainEntity": blog.faq.map(f => ({
+          "@type": "Question",
+          "name": f.question,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": f.answer
+          }
+        }))
+      }] : [])
+    ]
   };
 
   return (
