@@ -82,5 +82,28 @@ export default async function BlogDetailPage({ params }) {
     );
   }
 
-  return <BlogDetailView blog={blog} />;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": blog.title,
+    "description": blog.metaDescription || blog.content?.substring(0, 160).replace(/<[^>]*>/g, ""),
+    "image": [blog.imageUrl || "https://rankai.zorins.tech/default-og.png"],
+    "datePublished": blog.createdAt || blog.created_at,
+    "dateModified": blog.updatedAt || blog.updated_at,
+    "author": {
+      "@type": "Organization",
+      "name": "RankAI",
+      "url": "https://rankai.zorins.tech"
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <BlogDetailView blog={blog} />
+    </>
+  );
 }

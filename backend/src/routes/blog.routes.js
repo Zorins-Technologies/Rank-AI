@@ -11,7 +11,24 @@ const { generateUniqueSlug } = require("../utils/slug");
 const { validateKeyword, validateTitle, validateId } = require("../middleware/validate");
 const { generationLimiter } = require("../middleware/rateLimit");
 
-const { verifyToken, optionalVerifyToken } = require("../middleware/auth.middleware");
+/**
+ * Helper to ping Google for indexing when a new blog is published.
+ */
+async function triggerIndexing(slug) {
+  const sitemapUrl = "https://rankai.zorins.tech/sitemap.xml";
+  const pingUrl = `https://www.google.com/ping?sitemap=${sitemapUrl}`;
+  
+  try {
+    console.log(`[SEO] Pinging Google for indexing: https://rankai.zorins.tech/blogs/${slug}`);
+    const response = await fetch(pingUrl);
+    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+    console.log(`[SEO] Google Ping Successful: ${response.status}`);
+  } catch (error) {
+    console.warn(`[SEO] Google Indexing Ping failed for ${slug}:`, error.message);
+    // Fallback: This is usually due to Google deprecating the ping endpoint or rate limits.
+    // In production, we'd use the Google Indexing API with a Service Account.
+  }
+}
 
 router.post("/generate", verifyToken, generationLimiter, validateKeyword, async (req, res) => {
   console.log("REQUEST RECEIVED:", req.body);
@@ -83,6 +100,11 @@ router.post("/generate", verifyToken, generationLimiter, validateKeyword, async 
       updatedAt: savedBlog.updated_at
     };
 
+    // Trigger Indexing for the new published blog
+    if (savedBlog.status === 'published') {
+      triggerIndexing(savedBlog.slug);
+    }
+
     return res.status(201).json({
       success: true,
       data: responseData,
@@ -109,6 +131,11 @@ router.post("/generate-blog", verifyToken, generationLimiter, validateKeyword, a
     
     // Delegate to orchestrator
     const result = await generateBlogPipeline(userId, keyword);
+
+    // Trigger Indexing for the new published blog
+    if (result.status === 'published') {
+      triggerIndexing(result.slug);
+    }
 
     return res.status(result.id ? 201 : 200).json({
       success: true,
@@ -149,30 +176,46 @@ router.post("/generate-image", verifyToken, generationLimiter, validateTitle, as
   }
 });
 
-router.get("/blogs", verifyToken, async (req, res) => {
+router.get("/blogs", optionalVerifyToken, async (req, res) => {
   try {
-    const { search } = req.query;
-    const userId = req.user.uid;
+    const { search, status } = req.query;
+    const userId = req.user?.uid;
     let query;
     let params;
 
-    if (search) {
-      console.log(`[Route] GET /api/blogs - Search: "${search}" - User: ${userId}`);
+    // Public Sitemap/Library Access
+    if (status === 'published' && !userId) {
+      console.log(`[Route] GET /api/blogs - Public Fetch (Published Only)`);
       query = `
-        SELECT * FROM blogs 
-        WHERE user_id = $1 
-        AND (title ILIKE $2 OR keyword ILIKE $2 OR content ILIKE $2)
+        SELECT id, user_id, title, meta_description, keyword, image_url, slug, status, created_at, updated_at
+        FROM blogs 
+        WHERE status = 'published'
         ORDER BY created_at DESC
       `;
-      params = [userId, `%${search}%` || ''];
+      params = [];
+    } 
+    // Authenticated Dashboard Access
+    else if (userId) {
+      if (search) {
+        console.log(`[Route] GET /api/blogs - Search: "${search}" - User: ${userId}`);
+        query = `
+          SELECT * FROM blogs 
+          WHERE user_id = $1 
+          AND (title ILIKE $2 OR keyword ILIKE $2 OR content ILIKE $2)
+          ORDER BY created_at DESC
+        `;
+        params = [userId, `%${search}%` || ''];
+      } else {
+        console.log(`[Route] GET /api/blogs - Fetch All - User: ${userId}`);
+        query = `
+          SELECT * FROM blogs 
+          WHERE user_id = $1 
+          ORDER BY created_at DESC
+        `;
+        params = [userId];
+      }
     } else {
-      console.log(`[Route] GET /api/blogs - Fetch All - User: ${userId}`);
-      query = `
-        SELECT * FROM blogs 
-        WHERE user_id = $1 
-        ORDER BY created_at DESC
-      `;
-      params = [userId];
+      return res.status(401).json({ success: false, error: "Authentication required." });
     }
 
     const { rows } = await db.query(query, params);
