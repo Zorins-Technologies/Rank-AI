@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@google-cloud/secret-manager": "^6.1.1",
     "@google-cloud/storage": "^7.7.0",
     "@google-cloud/vertexai": "^1.11.0",
     "cors": "^2.8.5",
@@ -17,6 +18,7 @@
     "firebase-admin": "^13.7.0",
     "node-cron": "^4.2.1",
     "pg": "^8.20.0",
+    "stripe": "^22.0.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

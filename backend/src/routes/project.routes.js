@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { verifyToken } = require("../middleware/auth.middleware");
+const { syncUser, checkSubscription, checkProjectLimit } = require("../middleware/subscription.middleware");
 const db = require("../services/sql.service");
 const { body, validationResult } = require("express-validator");
 
@@ -21,6 +22,9 @@ const isValidUrl = (string) => {
 router.post(
   "/",
   verifyToken,
+  syncUser,
+  checkSubscription,
+  checkProjectLimit,
   [
     body("website_url").custom(isValidUrl).withMessage("valid website_url is required"),
     body("niche_type").isIn(["preset", "custom"]).withMessage("niche_type must be preset or custom"),
@@ -52,7 +56,7 @@ router.post(
 
 // ─── GET /projects ────────────────────────────────────────────────────────────
 // Fetch all projects for the authenticated user with blog counts.
-router.get("/", verifyToken, async (req, res) => {
+router.get("/", verifyToken, syncUser, async (req, res) => {
   try {
     const userId = req.user.uid;
 
@@ -75,7 +79,7 @@ router.get("/", verifyToken, async (req, res) => {
 
 // ─── GET /projects/:id ──────────────────────────────────────────────────────
 // Fetch a single project detail.
-router.get("/:id", verifyToken, async (req, res) => {
+router.get("/:id", verifyToken, syncUser, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.uid;
@@ -98,7 +102,7 @@ router.get("/:id", verifyToken, async (req, res) => {
 
 // ─── PATCH /projects/:id ─────────────────────────────────────────────────────
 // Update niche_value or status.
-router.patch("/:id", verifyToken, async (req, res) => {
+router.patch("/:id", verifyToken, syncUser, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.uid;
@@ -142,7 +146,7 @@ router.patch("/:id", verifyToken, async (req, res) => {
 
 // ─── DELETE /projects/:id ───────────────────────────────────────────────────
 // Delete project.
-router.delete("/:id", verifyToken, async (req, res) => {
+router.delete("/:id", verifyToken, syncUser, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.uid;

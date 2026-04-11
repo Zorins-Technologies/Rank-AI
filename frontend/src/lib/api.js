@@ -231,3 +231,34 @@ export async function deleteProject(id, token) {
     throw new Error("Failed to delete project.");
   }
 }
+
+// ─── Stripe & Billing API ──────────────────────────────────────────────────
+
+export async function fetchUsage(token) {
+  console.log(`[API] Fetching usage stats...`);
+  try {
+    const res = await fetchWithRetry(`${API_URL}/api/stripe/usage`, {
+      cache: "no-store",
+      headers: getHeaders(token),
+    });
+    return await handleResponse(res, "FetchUsage");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    throw new Error("Failed to load billing information.");
+  }
+}
+
+export async function createCheckoutSession(plan, token) {
+  console.log(`[API] Creating checkout session for plan: ${plan}`);
+  try {
+    const res = await fetchWithRetry(`${API_URL}/api/stripe/create-checkout-session`, {
+      method: "POST",
+      headers: getHeaders(token),
+      body: JSON.stringify({ plan }),
+    });
+    return await handleResponse(res, "CreateCheckoutSession");
+  } catch (err) {
+    console.error("API ERROR:", err);
+    throw new Error("Failed to initiate checkout. Please try again.");
+  }
+}

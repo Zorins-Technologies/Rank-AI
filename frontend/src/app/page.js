@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
+import { createCheckoutSession } from "../lib/api";
 
 const pricingPlans = [
   {
@@ -154,6 +156,8 @@ export default function HomePage() {
   const roiMultiple = Math.round(estimatedRevenue / 79);
 
   const router = useRouter();
+  const { user } = useAuth();
+  const [upgrading, setUpgrading] = useState(null);
 
   useEffect(() => {
     const savedUrl = localStorage.getItem("targetUrl");
@@ -208,6 +212,27 @@ export default function HomePage() {
       return target;
     } catch (_) {
       return "";
+    }
+  };
+
+  const handlePricingAction = async (planName) => {
+    if (!user) {
+      router.push("/signup");
+      return;
+    }
+
+    try {
+      setUpgrading(planName);
+      const token = await user.getIdToken();
+      const res = await createCheckoutSession(planName.toLowerCase(), token);
+      if (res.success && res.url) {
+        window.location.href = res.url;
+      }
+    } catch (err) {
+      console.error("Pricing Action Error:", err);
+      alert("Failed to initiate checkout. Please try again.");
+    } finally {
+      setUpgrading(null);
     }
   };
 
@@ -1234,12 +1259,15 @@ export default function HomePage() {
                     ))}
                   </ul>
 
-                  <button className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-lg ${
+                  <button 
+                    onClick={() => handlePricingAction(plan.name)}
+                    disabled={upgrading !== null}
+                    className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-lg ${
                     plan.popular 
                       ? "bg-brand-600 text-white hover:bg-brand-500 shadow-brand-500/20 active:scale-95" 
                       : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/5 active:scale-95"
                   }`}>
-                    Start Free Trial
+                    {upgrading === plan.name ? "Processing..." : "Start Free Trial"}
                   </button>
                 </motion.div>
               ))}

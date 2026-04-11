@@ -10,6 +10,8 @@ const { calculateSeoScore } = require("../utils/seo");
 const { generateUniqueSlug } = require("../utils/slug");
 const { validateKeyword, validateTitle, validateId } = require("../middleware/validate");
 const { generationLimiter } = require("../middleware/rateLimit");
+const { syncUser, checkSubscription, checkBlogLimit } = require("../middleware/subscription.middleware");
+const { verifyToken, optionalVerifyToken } = require("../middleware/auth.middleware");
 
 /**
  * Helper to ping Google for indexing when a new blog is published.
@@ -30,7 +32,7 @@ async function triggerIndexing(slug) {
   }
 }
 
-router.post("/generate", verifyToken, generationLimiter, validateKeyword, async (req, res) => {
+router.post("/generate", verifyToken, syncUser, checkSubscription, checkBlogLimit, generationLimiter, validateKeyword, async (req, res) => {
   console.log("REQUEST RECEIVED:", req.body);
   try {
     const { keyword } = req.body;
@@ -122,7 +124,7 @@ router.post("/generate", verifyToken, generationLimiter, validateKeyword, async 
  * POST /api/generate-blog
  * Optimized pipeline: Delegate orchestration to blog.orchestrator
  */
-router.post("/generate-blog", verifyToken, generationLimiter, validateKeyword, async (req, res) => {
+router.post("/generate-blog", verifyToken, syncUser, checkSubscription, checkBlogLimit, generationLimiter, validateKeyword, async (req, res) => {
   try {
     const { keyword } = req.body;
     const userId = req.user.uid;
@@ -155,7 +157,7 @@ router.post("/generate-blog", verifyToken, generationLimiter, validateKeyword, a
  * POST /api/generate-image
  * Standalone image generation endpoint
  */
-router.post("/generate-image", verifyToken, generationLimiter, validateTitle, async (req, res) => {
+router.post("/generate-image", verifyToken, syncUser, checkSubscription, checkBlogLimit, generationLimiter, validateTitle, async (req, res) => {
   try {
     const { title } = req.body;
 

@@ -1,11 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const config = require('./src/config'); 
+const { config, initializeProductionConfig } = require('./src/config'); 
 const db = require('./src/services/sql.service');
 const blogRoutes = require('./src/routes/blog.routes.js');
 const keywordRoutes = require('./src/routes/keyword.routes.js');
 const projectRoutes = require('./src/routes/project.routes.js');
+const stripeRoutes = require('./src/routes/stripe.routes.js');
 const { apiLimiter } = require('./src/middleware/rateLimit');
 const { startAutoGenerateJob } = require('./src/jobs/autoGenerate.job');
 const { startSystemBlogJob } = require('./src/jobs/systemBlog.job');
@@ -74,6 +75,7 @@ app.get('/health-db', async (req, res) => {
 app.use('/', blogRoutes);
 app.use('/keywords', keywordRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/stripe', stripeRoutes);
 
 // Compatibility fallback for root access
 app.get('/', (req, res) => {
@@ -104,7 +106,41 @@ async function runMigrations() {
   try {
     await db.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
 
-    // 1. Create Projects Table
+    // 1. Create Users Table (Stripe & Subscription Management)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id                   TEXT PRIMARY KEY, -- Firebase UID
+        email                TEXT UNIQUE NOT NULL,
+        stripe_customer_id   TEXT,
+        subscription_status  TEXT DEFAULT 'trialing',
+        plan                 TEXT DEFAULT 'starter',
+        trial_ends_at        TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days'),
+        created_at           TIMESTAMPTZ DEFAULT NOW(),
+        updated_at           TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // 2. Create Blogs Table (Core Content)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS blogs (
+        id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id          TEXT NOT NULL,
+        project_id       UUID,
+        title            TEXT NOT NULL,
+        content          TEXT NOT NULL,
+        meta_description TEXT,
+        keyword          TEXT,
+        image_url        TEXT,
+        slug             TEXT UNIQUE NOT NULL,
+        analysis         JSONB,
+        faq             JSONB,
+        status           TEXT DEFAULT 'draft',
+        created_at       TIMESTAMPTZ DEFAULT NOW(),
+        updated_at       TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // 3. Create Projects Table
     await db.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -119,14 +155,10 @@ async function runMigrations() {
     `);
     await db.query(`CREATE INDEX IF NOT EXISTS projects_user_id_idx ON projects (user_id)`);
 
-    // 2. Update Keyword Research Table
+    // 4. Update Keyword Research Table
     await db.query(`ALTER TABLE keyword_research ADD COLUMN IF NOT EXISTS project_id UUID`);
-    // Foreign key will be added after migration to ensure safety
     
-    // 3. Update Blogs Table
-    await db.query(`ALTER TABLE blogs ADD COLUMN IF NOT EXISTS project_id UUID`);
-
-    // 4. PERFORM DATA MIGRATION (Default Project for existing users)
+    // 5. PERFORM DATA MIGRATION (Default Project for existing users)
     console.log('[Migration] Checking for users needing a Default Project...');
     
     // Get unique users from both blogs and keyword_research who don't have a project yet
@@ -140,7 +172,6 @@ async function runMigrations() {
 
     for (const { user_id } of orphanUsers) {
       console.log(`[Migration] Creating Default Project for user: ${user_id}`);
-      // Check if user already has any project (defensive)
       const { rows: projects } = await db.query(`SELECT id FROM projects WHERE user_id = $1 LIMIT 1`, [user_id]);
       
       let projectId;
@@ -155,13 +186,11 @@ async function runMigrations() {
         projectId = projects[0].id;
       }
 
-      // Update their records
       await db.query(`UPDATE blogs SET project_id = $1 WHERE user_id = $2 AND project_id IS NULL`, [projectId, user_id]);
       await db.query(`UPDATE keyword_research SET project_id = $1 WHERE user_id = $2 AND project_id IS NULL`, [projectId, user_id]);
     }
 
-    // 5. Finalize Constraints (Once migration is done)
-    // Note: We only enforce NOT NULL if we are sure all orphans are cleared
+    // 6. Finalize Constraints
     try {
        await db.query(`ALTER TABLE blogs ALTER COLUMN project_id SET NOT NULL`);
        await db.query(`ALTER TABLE blogs ADD CONSTRAINT blogs_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE`);
@@ -171,7 +200,7 @@ async function runMigrations() {
        console.warn('[Migration] Constraints already exist or table is empty during constraint phase.');
     }
 
-    // Existing Keyword Research table adjustments
+    // 7. Update Keyword Research Table Structure
     await db.query(`
       CREATE TABLE IF NOT EXISTS keyword_research (
         id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -187,7 +216,6 @@ async function runMigrations() {
         updated_at   TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-    // Re-run original keyword project indexes if they were missing or needed update
     await db.query(`CREATE INDEX IF NOT EXISTS keyword_research_project_idx ON keyword_research (project_id)`);
 
     console.log('[Migration] Multi-tenant project system ready.');
@@ -197,41 +225,69 @@ async function runMigrations() {
 }
 
 // Startup logic
-const server = app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`\n============================================`);
-  console.log(`  Rank AI SaaS — UP & RUNNING on 0.0.0.0:${PORT}`);
-  console.log(`  Project: ${config.gcpProjectId}`);
-  console.log(`  Modernized April 2026 (Gen AI SDK)`);
-  console.log(`============================================\n`);
+const startServer = async () => {
+  // Hydrate production secrets BEFORE initializing other services
+  await initializeProductionConfig();
 
-  await runMigrations();
-  startAutoGenerateJob();
-  startSystemBlogJob();
-});
+  const server = app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`\n============================================`);
+    console.log(`  Rank AI SaaS — UP & RUNNING on 0.0.0.0:${PORT}`);
+    console.log(`  Project: ${config.gcpProjectId}`);
+    console.log(`  Environment: ${config.env}`);
+    console.log(`  Modernized April 2026 (Gen AI SDK)`);
+    console.log(`============================================\n`);
 
-// Graceful Shutdown Handler
-const shutdown = (signal) => {
-  console.log(`\n[${signal}] Received. Shutting down Rank AI Backend...`);
-  server.close(() => {
-    console.log('  -> Server closed. Clean exit.');
-    process.exit(0);
+    await runMigrations();
+    startAutoGenerateJob();
+    startSystemBlogJob();
   });
-  
-  // Force exit after 3 seconds if server.close is hanging
-  setTimeout(() => {
-    console.error('  -> Could not close connections in time, forcing shut down.');
-    process.exit(1);
-  }, 3000);
+
+  // Graceful Shutdown Handler
+  const shutdown = async (signal) => {
+    console.log(`\n[${signal}] Received. Shutting down Rank AI Backend...`);
+    
+    // Set a timeout to force shutdown if it hangs
+    const forceExit = setTimeout(() => {
+      console.error('  -> Could not close connections in time, forcing shut down.');
+      process.exit(1);
+    }, 5000);
+
+    try {
+      // 1. Stop accepting new requests
+      server.close(() => {
+        console.log('  -> Server (Express) closed.');
+      });
+
+      // 2. Clear Cron Jobs or ongoing tasks if possible
+      // (Assuming jobs have their own close/stop methods if needed)
+
+      // 3. Close Database Pool
+      if (db.pool) {
+        console.log('  -> Draining DB pool...');
+        await db.pool.end();
+        console.log('  -> DB pool drained.');
+      }
+
+      console.log('  -> Clean exit.');
+      clearTimeout(forceExit);
+      process.exit(0);
+    } catch (err) {
+      console.error('  -> Error during graceful shutdown:', err);
+      process.exit(1);
+    }
+  };
+
+  // Listen for termination signals
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  // Graceful Port Management
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n[FATAL]: Port ${PORT} already in use. Please clear old processes.`);
+      process.exit(1);
+    }
+  });
 };
 
-// Listen for termination signals
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-
-// Graceful Port Management
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`\n[FATAL]: Port ${PORT} already in use. Please clear old processes.`);
-    process.exit(1);
-  }
-});
+startServer();

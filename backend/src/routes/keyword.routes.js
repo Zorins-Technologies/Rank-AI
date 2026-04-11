@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { verifyToken } = require("../middleware/auth.middleware");
+const { syncUser, checkSubscription, checkBlogLimit } = require("../middleware/subscription.middleware");
 const { generationLimiter } = require("../middleware/rateLimit");
 const { researchKeywords } = require("../services/keyword.service");
 const { generateBlog } = require("../services/gemini.service");
@@ -11,7 +12,7 @@ const db = require("../services/sql.service");
 // ─── POST /keywords/research ──────────────────────────────────────────────────
 // Generate 20-50 keywords for a given niche and save them to the DB.
 // Skips duplicates for the same user via the unique DB index.
-router.post("/research", verifyToken, generationLimiter, async (req, res) => {
+router.post("/research", verifyToken, syncUser, checkSubscription, generationLimiter, async (req, res) => {
   try {
     const { niche, project_id } = req.body;
     const userId = req.user.uid;
@@ -60,7 +61,7 @@ router.post("/research", verifyToken, generationLimiter, async (req, res) => {
 
 // ─── GET /keywords ────────────────────────────────────────────────────────────
 // List all keywords for the authenticated user.
-router.get("/", verifyToken, async (req, res) => {
+router.get("/", verifyToken, syncUser, async (req, res) => {
   try {
     const userId = req.user.uid;
     const { niche, status, project_id } = req.query;
@@ -95,7 +96,7 @@ router.get("/", verifyToken, async (req, res) => {
 // ─── POST /keywords/:id/generate ─────────────────────────────────────────────
 // Trigger blog generation for a specific keyword ID.
 // Marks the keyword as 'generating' immediately, then runs the pipeline.
-router.post("/:id/generate", verifyToken, generationLimiter, async (req, res) => {
+router.post("/:id/generate", verifyToken, syncUser, checkSubscription, checkBlogLimit, generationLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.uid;
@@ -114,19 +115,7 @@ router.post("/:id/generate", verifyToken, generationLimiter, async (req, res) =>
       return res.status(409).json({ success: false, error: "Blog generation is already in progress." });
     }
 
-    // Check per-user daily limit (manual triggers count toward the limit)
-    const { rows: [limitRow] } = await db.query(
-      `SELECT COUNT(*) as cnt FROM keyword_research
-       WHERE user_id = $1 AND status = 'generated'
-       AND updated_at >= NOW() - INTERVAL '24 hours'`,
-      [userId]
-    );
-    if (parseInt(limitRow.cnt) >= 5) {
-      return res.status(429).json({
-        success: false,
-        error: "Daily generation limit reached (5 blogs/day). Please try again tomorrow.",
-      });
-    }
+    // Hardcoded daily limit replaced by checkBlogLimit middleware
 
     // Mark as generating immediately so UI can show progress
     await db.query(

@@ -5,14 +5,45 @@ const fs = require("fs");
 // Load .env from the backend root directory (one level up from src)
 dotenv.config({ path: path.join(__dirname, "../../.env") });
 
-const config = {
+const { loadProductionSecrets } = require("../services/secret.service");
+
+// Initial config from environment
+const rawConfig = {
   env: process.env.NODE_ENV || "development",
   gcpProjectId: process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT,
   gcsBucketName: process.env.GCS_BUCKET_NAME,
   vertexLocation: process.env.VERTEX_LOCATION || "us-central1",
   port: process.env.PORT || 8080,
   genaiApiKey: process.env.GENAI_API_KEY,
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  stripePriceStarter: process.env.STRIPE_PRICE_STARTER,
+  stripePriceGrowth: process.env.STRIPE_PRICE_GROWTH,
+  stripePriceAgency: process.env.STRIPE_PRICE_AGENCY,
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+  databaseUrl: process.env.DATABASE_URL
 };
+
+// This function will be called during app boot in server.js to hydrate secrets
+async function initializeProductionConfig() {
+  if (rawConfig.env === 'production') {
+    console.log('[Config] Production environment detected. Hydrating secrets...');
+    const secrets = await loadProductionSecrets();
+    
+    // Merge secrets into rawConfig, favoring Secret Manager over .env
+    Object.keys(secrets).forEach(key => {
+      // Convention: DATABASE_URL in Secret Manager maps to databaseUrl in config
+      if (key === 'DATABASE_URL') rawConfig.databaseUrl = secrets[key];
+      else if (key === 'STRIPE_SECRET_KEY') rawConfig.stripeSecretKey = secrets[key];
+      else if (key === 'STRIPE_WEBHOOK_SECRET') rawConfig.stripeWebhookSecret = secrets[key];
+      else if (key === 'GENAI_API_KEY') rawConfig.genaiApiKey = secrets[key];
+      else if (key === 'GOOGLE_CLOUD_PRIVATE_KEY') process.env.GOOGLE_CLOUD_PRIVATE_KEY = secrets[key];
+      else if (key === 'GOOGLE_CLOUD_CLIENT_EMAIL') process.env.GOOGLE_CLOUD_CLIENT_EMAIL = secrets[key];
+    });
+  }
+}
+
+const config = rawConfig;
 
 // Validation for required environment variables
 const requiredEnvVars = [
@@ -59,4 +90,4 @@ if (process.env.GOOGLE_CLOUD_PRIVATE_KEY && process.env.GOOGLE_CLOUD_CLIENT_EMAI
   );
 }
 
-module.exports = config;
+module.exports = { config, initializeProductionConfig };
