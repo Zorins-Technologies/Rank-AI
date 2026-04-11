@@ -119,6 +119,16 @@ export default function HomePage() {
   const [targetSite, setTargetSite] = useState("yourwebsite.com");
   const [isAnnual, setIsAnnual] = useState(false);
   const [activeDashboardTab, setActiveDashboardTab] = useState("Articles");
+  
+  // ROI Calculator State
+  const [visitors, setVisitors] = useState(1000);
+  const [conversionRate, setConversionRate] = useState(2);
+  const [customerValue, setCustomerValue] = useState(100);
+
+  const projectedTraffic = visitors * 12; 
+  const estimatedRevenue = projectedTraffic * (conversionRate / 100) * customerValue;
+  const roiMultiple = Math.round(estimatedRevenue / 79);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -886,6 +896,131 @@ export default function HomePage() {
                   </div>
                 </motion.div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ROI Calculator Section */}
+        <section className="relative z-10 px-6 py-32 bg-[#020617] border-t border-white/5">
+          <div className="mx-auto max-w-6xl">
+            <div className="text-center mb-16 space-y-4">
+              <h2 className="text-4xl md:text-5xl font-display font-black text-white tracking-tight">
+                See Your Potential Growth with <span className="brand-text">RankAI</span>
+              </h2>
+              <p className="text-slate-400 text-lg max-w-2xl mx-auto font-medium">
+                Estimate how much traffic and revenue you can generate in the next 6 months
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Inputs */}
+              <div className="glass-card p-8 bg-slate-900/60 border-white/5 space-y-8 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-500 to-indigo-500" />
+                
+                <div>
+                  <div className="flex justify-between mb-3">
+                    <label className="text-sm font-bold text-slate-300">Monthly Visitors</label>
+                    <span className="text-brand-400 font-bold bg-brand-500/10 px-2 py-0.5 rounded text-sm">{visitors.toLocaleString()}</span>
+                  </div>
+                  <input type="range" min="0" max="50000" step="500" value={visitors} onChange={(e) => setVisitors(Number(e.target.value))} className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-brand-500" />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-widest">
+                    <span>0</span>
+                    <span>50k+</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between mb-3">
+                    <label className="text-sm font-bold text-slate-300">Conversion Rate</label>
+                    <span className="text-brand-400 font-bold bg-brand-500/10 px-2 py-0.5 rounded text-sm">{conversionRate}%</span>
+                  </div>
+                  <input type="range" min="1" max="10" step="0.5" value={conversionRate} onChange={(e) => setConversionRate(Number(e.target.value))} className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-brand-500" />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-widest">
+                    <span>1%</span>
+                    <span>10%</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-3">
+                    <label className="text-sm font-bold text-slate-300">Average Customer Value ($)</label>
+                    <span className="text-brand-400 font-bold bg-brand-500/10 px-2 py-0.5 rounded text-sm">${customerValue.toLocaleString()}</span>
+                  </div>
+                  <input type="range" min="10" max="1000" step="10" value={customerValue} onChange={(e) => setCustomerValue(Number(e.target.value))} className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-brand-500" />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-widest">
+                    <span>$10</span>
+                    <span>$1,000+</span>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-white/5">
+                  <p className="text-slate-500 text-sm font-medium flex items-center gap-2">
+                    <svg className="w-4 h-4 shrink-0 text-slate-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                    Traditional SEO agencies cost <span className="text-slate-400 line-through">$3,000–$5,000/month</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Outputs */}
+              <div className="glass-card p-8 lg:p-10 relative overflow-hidden group/roi border-emerald-500/20 bg-slate-900 shadow-[0_0_40px_rgba(16,185,129,0.05)] h-full flex flex-col justify-between">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-brand-500/5 to-transparent" />
+                <div className="absolute -top-32 -right-32 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full" />
+                
+                <div className="relative z-10 space-y-10">
+                  
+                  <div className="flex flex-col md:flex-row md:items-baseline justify-between border-b border-white/5 pb-8 gap-4">
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                      Projected Traffic
+                    </p>
+                    <p className="text-4xl font-display font-black text-white tabular-nums tracking-tight">
+                      {projectedTraffic.toLocaleString()} <span className="text-sm text-slate-500 font-medium">/mo</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row md:items-baseline justify-between border-b border-white/5 pb-8 gap-4">
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Estimated Revenue
+                    </p>
+                    <p className="text-5xl font-display font-black text-emerald-400 tabular-nums tracking-tight drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                      ${estimatedRevenue.toLocaleString()} <span className="text-sm text-slate-500 font-medium">/mo</span>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">ROI Multiple</p>
+                    <div className="flex items-center gap-2">
+                       <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-400 font-black rounded-lg border border-emerald-500/20 shadow-lg flex items-center gap-2">
+                         <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                         </span>
+                         {roiMultiple}x ROI
+                       </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative z-10 pt-10 mt-auto">
+                  <button 
+                    onClick={() => {
+                      const input = document.getElementById("url-input");
+                      if (input) {
+                        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => input.focus(), 800);
+                      }
+                    }}
+                    className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 active:scale-95 text-[#020617] font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
+                  >
+                    Start Getting These Results
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  </button>
+                  <p className="text-center text-[10px] text-slate-500 mt-4 uppercase tracking-widest font-bold">
+                    *Results are estimates and may vary based on niche and competition.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
