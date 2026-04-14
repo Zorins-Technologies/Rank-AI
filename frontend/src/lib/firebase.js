@@ -21,7 +21,7 @@ try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
   } else {
-    // This branch is expected during build time on Vercel if keys aren't provided to the builder
+    // This branch is expected during build time on Cloud Build if keys aren't provided to the builder
     console.warn("[Firebase] Initialization skipped: Missing API Key. Auth services will be disabled.");
   }
 } catch (error) {
