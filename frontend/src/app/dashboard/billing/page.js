@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Navbar from "../../../components/Navbar";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 import { useAuth } from "../../../context/AuthContext";
-import { fetchUsage, createCheckoutSession } from "../../../lib/api";
+import { api } from "../../../lib/api/index";
 
 export default function BillingPage() {
   const { user } = useAuth();
@@ -24,7 +24,7 @@ export default function BillingPage() {
     try {
       setLoading(true);
       const token = await user.getIdToken();
-      const res = await fetchUsage(token);
+      const res = await api.billing.getUsage(token);
       if (res.success) {
         setUsage(res);
       }
@@ -40,7 +40,7 @@ export default function BillingPage() {
     try {
       setUpgrading(plan);
       const token = await user.getIdToken();
-      const res = await createCheckoutSession(plan, token);
+      const res = await api.billing.createSession(plan, token);
       if (res.success && res.url) {
         window.location.href = res.url;
       }
@@ -75,7 +75,7 @@ export default function BillingPage() {
           </div>
 
           {loading ? (
-             <div className="glass-card p-12 space-y-8 animate-pulse">
+             <div className="shimmer p-12 space-y-8 w-full">
                <div className="h-8 w-48 bg-slate-800 rounded" />
                <div className="space-y-4">
                  <div className="h-4 w-full bg-slate-800 rounded" />

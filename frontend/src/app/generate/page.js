@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../../components/Navbar";
-import { generateBlog } from "../../lib/api";
+import { api } from "../../lib/api/index";
 import { useAuth } from "../../context/AuthContext";
 
 import { toast } from "react-hot-toast";
@@ -34,7 +34,7 @@ export default function GeneratePage() {
 
     try {
       const token = await user.getIdToken();
-      const response = await generateBlog(keyword, token);
+      const response = await api.blogs.generate(keyword, token);
       
       if (response.success && response.data) {
         setGeneratedBlog(response.data);

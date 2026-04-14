@@ -1,0 +1,15 @@
+# Standard .gcloudignore for RankAI Frontend
+node_modules/
+.next/
+.git/
+
+# Keep build-time environment variables
+# .env.local and other secrets remain ignored
+.env.local
+.env.*.local
+
+# Exclude unnecessary artifacts
+apphosting.yaml
+cloudbuild.yaml
+.DS_Store
+*.log

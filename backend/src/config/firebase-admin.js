@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const config = require("./index");
+const { config } = require("./index");
 
 if (!admin.apps.length) {
   try {

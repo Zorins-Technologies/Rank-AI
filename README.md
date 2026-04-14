@@ -1,155 +1,62 @@
-# Rank AI 🚀
+# Rank AI – Full-Stack AEO & SEO Platform
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
-[![Google Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%202.0-blue)](https://cloud.google.com/vertex-ai)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Cloud%20SQL-blue)](https://cloud.google.com/sql/docs/postgres)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+Rank AI is a premium SaaS platform designed for Answer Engine Optimization (AEO) and traditional SEO. It offers high-conversion landing pages, AI-powered keyword research, growth plan generation, and fully automated blog publishing to CMS platforms like WordPress and Webflow.
 
-An enterprise-grade AI SaaS platform for generating SEO-optimized blog content using **Google Vertex AI** (Gemini 2.0 Flash) and **PostgreSQL**. Create high-quality, long-form blog posts with matching images, automatic SEO scoring, and secure cloud persistence.
+## 🚀 Architecture overview
 
-Built by [Zorins Technologies](https://github.com/Zorins-Technologies)
+This project operates as a monorepo containing a modern stack tailored for performance and scale.
 
----
+*   **Frontend**: Next.js 14, React 18, Tailwind CSS, Framer Motion
+*   **Backend**: Node.js, Express, PostgreSQL
+*   **Database**: Google Cloud SQL (PostgreSQL), `pg`
+*   **Auth**: Firebase Client SDK & Firebase Admin
+*   **AI Engine**: Google Vertex AI (Gemini 2.0 Flash, Imagen)
+*   **Infrastructure target**: Google Cloud Run & Cloud Storage
 
-## ✨ Features
+## 📋 Prerequisites
+1.  Node.js v18+
+2.  PostgreSQL Database (Local or Cloud SQL)
+3.  Google Cloud Service Account (with permissions for Vertex AI, Cloud Storage, and Cloud SQL)
+4.  Firebase Project Setup
+5.  Stripe Account (for billing)
 
-- 🤖 **Enterprise AI Generation**: Uses Google Vertex AI (Gemini 2.0 Flash) with automatic fallback systems for 100% uptime.
-- 🎨 **AI Image Generation**: Automatically generate relevant header images using Google Imagen.
-- 📊 **SEO Analysis**: Built-in scoring system providing detailed metrics (Title, Meta, Content, Keyword density).
-- 🔗 **Smart Slugs**: Auto-generated, unique, and SEO-friendly URLs.
-- ❓ **FAQ Generation**: Automatically includes FAQ sections to boost search engine visibility.
-- ☁️ **Cloud Storage**: Secure image storage and delivery via Google Cloud Storage.
-- 🐘 **PostgreSQL Power**: Robust data persistence with Cloud SQL (JSONB support for AI analysis).
-- 🎯 **Production Ready**: Configured for Cloud Run (Backend) and Firebase App Hosting (Frontend).
+## 🛠️ Local Development Setup
 
----
+### 1. Environment Variables Configuration
+To run the apps, you need configuration files.
+*   **Backend**: Navigate to `/backend`. Copy `.env.example` to `.env` and fill out your local Postgres connection credentials, GCP keys, Stripe keys, etc.
+*   **Frontend**: Navigate to `/frontend`. Copy `.env.example` to `.env.local` and add your Firebase configuration. *Note: `NEXT_PUBLIC_API_URL` defaults to `http://localhost:8080/api` locally.*
 
-## 🛠️ Tech Stack
-
-### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Deployment**: Firebase App Hosting
-- **Styling**: Tailwind CSS + Framer Motion
-- **Auth**: Firebase Auth (ID Token Verification)
-
-### Backend
-- **Runtime**: Node.js (Express.js)
-- **Deployment**: Google Cloud Run
-- **AI Ecosystem**: Google Vertex AI (Gemini 2.0/1.5 Flash, Imagen)
-- **Database**: PostgreSQL (Cloud SQL)
-- **Security**: Google Application Default Credentials (ADC), Rate Limiting, CORS.
-
----
-
-## 🚀 Prerequisites
-
-1. **Google Cloud Project** with billing enabled.
-2. **Google Cloud CLI** installed:
-   ```bash
-   gcloud auth application-default login
-   ```
-3. **Enabled APIs**:
-   - Vertex AI API
-   - Cloud SQL Admin API
-   - Cloud Storage API
-
----
-
-## 📦 Installation & Setup
-
-### 1. Clone & Install
+### 2. Dependency Installation
+Run the root script to gracefully install dependencies for the root, frontend, and backend packages:
 ```bash
-git clone https://github.com/Zorins-Technologies/Rank-AI.git
-cd Rank-AI
-# Install backend deps
-cd backend && npm install
-# Install frontend deps
-cd ../frontend && npm install
+npm run install-all
 ```
 
-### 2. Database Setup (Cloud SQL)
-1. Create a PostgreSQL instance in Google Cloud SQL.
-2. Create a database named `rank_ai`.
-3. Create the `blogs` table:
-   ```sql
-   CREATE TABLE blogs (
-     id SERIAL PRIMARY KEY,
-     user_id VARCHAR(255) NOT NULL,
-     title TEXT NOT NULL,
-     content TEXT NOT NULL,
-     meta_description TEXT,
-     keyword VARCHAR(255),
-     image_url TEXT,
-     slug VARCHAR(255) UNIQUE,
-     analysis JSONB DEFAULT '{}',
-     faq JSONB DEFAULT '[]',
-     status VARCHAR(50) DEFAULT 'published',
-     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-   );
-   ```
-
-### 3. Environment Configuration
-
-**Backend (`backend/.env`):**
-```env
-GCP_PROJECT_ID=hale-life-368716
-GCS_BUCKET_NAME=your-bucket-name
-VERTEX_LOCATION=us-central1
-DB_HOST=your-cloud-sql-public-ip
-DB_USER=postgres
-DB_PASSWORD=your-password
-DB_NAME=rank_ai
+### 3. Server Initialization & Running Locally
+Start both the backend and frontend simultaneously from the root directory:
+```bash
+npm run dev
 ```
 
-**Frontend (`frontend/apphosting.yaml`):**
-```yaml
-env:
-  - variable: NEXT_PUBLIC_API_URL
-    value: "https://your-backend-url.a.run.app"
-  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: "..."
-```
+*   **Frontend**: `http://localhost:3000`
+*   **Backend**: `http://localhost:8080` (Database tables will auto-migrate on first boot)
 
 ---
 
-## 🏗️ Project Structure
+## 🚢 Production Deployment (Google Cloud Run)
 
-```
-rank-ai/
-├── backend/
-│   ├── src/
-│   │   ├── config/           # Env & GCP Config
-│   │   ├── middleware/       # Auth & Validation
-│   │   ├── routes/           # API Endpoints
-│   │   ├── services/
-│   │   │   ├── gemini.service.js  # Vertex AI Blog Logic
-│   │   │   ├── sql.service.js     # PostgreSQL (pg) Client
-│   │   │   └── storage.service.js # Cloud Storage
-├── frontend/
-│   ├── src/                  # Next.js App Router
-│   ├── apphosting.yaml       # Firebase Deployment Config
-│   └── next.config.js        # Optimized standalone build
-└── README.md
-```
+### Backend Deployment
+The backend uses a standard `Dockerfile` configured to compile the source code and expose port `8080`.
+Ensure that the Cloud Run service is linked to Cloud SQL via a unix-socket. 
+Key Environment Variable to set in GCP: 
+*   `INSTANCE_CONNECTION_NAME`: The string identifier for your Cloud SQL instance.
+*   `NODE_ENV=production`
 
-### 📡 API Documentation
+### Frontend Deployment
+The Next.js frontend `.next` standalone build runs efficiently on Cloud Run.
+Make sure to provide `NEXT_PUBLIC_API_URL` pointing safely to the backend Cloud Run service *before* compilation.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/generate-blog` | Generate complete blog with content and image |
-| `POST` | `/api/generate-image` | Generate image only |
-| `GET` | `/api/blogs` | Retrieve all blogs |
-| `GET` | `/api/blogs/:id` | Get specific blog by ID or slug |
-| `GET` | `/api/health` | Health check endpoint |
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please fork the repository and open a Pull Request.
-
-## 📄 License
-
-Proprietary — Zorins Technologies (C) 2026
+## 🛡️ Security Notes
+*   Service Account keys and cryptographic keys `.pem` are strictly blocked via `.gitignore`.
+*   Ensure that any generated output defaults (mock data logic on AI failure) matches the strict guidelines of your business rules.

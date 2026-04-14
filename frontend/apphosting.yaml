@@ -2,8 +2,9 @@ kind: "AppHostingYaml"
 apiVersion: "v1"
 runConfig:
   concurrency: 80
-  cpu: 1
-  memoryMiB: 512
+  cpu: 2
+  memoryMiB: 1024
+  timeoutSeconds: 3600
 env:
   - variable: NEXT_PUBLIC_API_URL
     value: "https://rank-ai-backend-mnp6th6rcq-uc.a.run.app"

@@ -4,7 +4,7 @@ const { generateBlog } = require("../services/gemini.service");
 const { generateUniqueSlug } = require("../utils/slug");
 const { calculateSeoScore } = require("../utils/seo");
 const db = require("../services/sql.service");
-const { triggerIndexing } = require("../routes/blog.routes");
+const { triggerIndexing } = require("../utils/indexing");
 
 // ─── CONFIGURATION ────────────────────────────────────────────────────────────
 

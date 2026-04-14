@@ -45,3 +45,6 @@ gsk/service-account.json
 service-account.json
 temp-credentials.json
 backend/temp-credentials.json
+
+# Cryptographic Keys
+*.pem

@@ -1,9 +1,21 @@
 const db = require("../services/sql.service");
-const config = require("../config");
-const stripe = require("stripe")(config.stripeSecretKey);
+const { config } = require("../config");
+
+// Initialize stripe lazily or check for key
+let stripe;
+const getStripe = () => {
+  if (stripe) return stripe;
+  if (!config.stripeSecretKey) {
+    console.warn("[Stripe] Warning: stripeSecretKey is missing in config.");
+    // Return a dummy object to avoid crash during boot, but handle errors during calls
+    return { customers: { create: async () => { throw new Error("Stripe not configured"); } } };
+  }
+  stripe = require("stripe")(config.stripeSecretKey);
+  return stripe;
+};
 
 const PLAN_LIMITS = {
-  starter: { maxProjects: 1, maxBlogsPerMonth: 10 },
+  starter: { maxProjects: 1, maxBlogsPerMonth: 20 },
   growth: { maxProjects: 3, maxBlogsPerMonth: 30 },
   agency: { maxProjects: Infinity, maxBlogsPerMonth: Infinity },
 };
@@ -36,15 +48,15 @@ async function syncUser(req, res, next) {
     // 1. Create Stripe Customer
     let stripeCustomerId = null;
     if (config.stripeSecretKey) {
-       try {
-         const customer = await stripe.customers.create({
-           email,
-           metadata: { firebase_uid: uid }
-         });
-         stripeCustomerId = customer.id;
-       } catch (stripeErr) {
-         console.error("[Subscription Middleware] Stripe Customer Creation Failed:", stripeErr.message);
-       }
+      try {
+        const customer = await getStripe().customers.create({
+          email,
+          metadata: { firebase_uid: uid }
+        });
+        stripeCustomerId = customer.id;
+      } catch (stripeErr) {
+        console.error("[Subscription Middleware] Stripe Customer Creation Failed:", stripeErr.message);
+      }
     }
 
     // 2. Insert into DB (Start 14-day trial automatically)
@@ -81,8 +93,8 @@ function checkSubscription(req, res, next) {
   const isActive = sub.subscription_status === 'active' || (sub.subscription_status === 'trialing' && isTrialValid);
 
   if (!isActive) {
-    return res.status(403).json({ 
-      success: false, 
+    return res.status(403).json({
+      success: false,
       error: "Subscription required.",
       code: "SUBSCRIPTION_REQUIRED"
     });

@@ -7,31 +7,61 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata = {
-  title: "Rank AI | Modern AI SaaS",
-  description: "Generate SEO-optimized blog content with Gemini and Imagen.",
+  title: "RankAI — Dominate Search on Autopilot",
+  description: "RankAI automates content creation, backlink building, and Answer Engine Optimization (AEO). The single platform to grow organic traffic seamlessly.",
+  keywords: ["AI SEO", "AEO", "automated content", "AI backlinks", "search optimization"],
+  openGraph: {
+    title: "RankAI — AI-Powered Growth Engine",
+    description: "Automate your content pipeline and rank higher on Google + AI engines.",
+    type: "website",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "RankAI",
+      "applicationCategory": "SEO Software",
+      "operatingSystem": "Web",
+      "description": "AI-powered SEO and AEO platform for automated growth.",
+      "offers": {
+        "@type": "AggregateOffer",
+        "lowPrice": "29",
+        "highPrice": "199",
+        "priceCurrency": "USD"
+      },
+    }
+  ]
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className={`${inter.variable} ${outfit.variable} font-sans antialiased text-slate-100 bg-[#020617] selection:bg-brand-500/30`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
+      <body className={`${inter.variable} ${outfit.variable} font-sans antialiased bg-[#020617] text-slate-100`}>
         <AuthProvider>
           <Toaster 
             position="bottom-right"
             toastOptions={{
-              style: {
-                background: '#1e293b',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '1rem',
-              },
+              className: '!bg-slate-900 !text-slate-100 !border !border-white/10 !rounded-2xl',
             }}
           />
-          <div className="fixed inset-0 -z-10">
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-700/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-700/8 rounded-full blur-3xl" />
+          
+          <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px]" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[120px]" />
           </div>
-          {children}
+
+          <main className="relative flex flex-col min-h-screen">
+            {children}
+          </main>
         </AuthProvider>
       </body>
     </html>

@@ -7,7 +7,7 @@ import Navbar from "../../components/Navbar";
 import BlogCard from "../../components/BlogCard";
 import BlogCardSkeleton from "../../components/BlogCardSkeleton";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import { fetchBlogs } from "../../lib/api";
+import { blogsApi } from "../../lib/api/index";
 import { useAuth } from "../../context/AuthContext";
 
 export default function BlogsPage() {
@@ -18,9 +18,10 @@ export default function BlogsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [nextCursor, setNextCursor] = useState(null);
   const [error, setError] = useState(null);
+  
   const router = useRouter();
   const searchParams = useSearchParams();
-  const project_id = searchParams.get("project_id");
+  const projectId = searchParams.get("project_id");
 
   const loadBlogs = useCallback(async (isInitial = true, cursor = null) => {
     if (!user) return;
@@ -31,81 +32,62 @@ export default function BlogsPage() {
 
     try {
       const token = await user.getIdToken();
-      // fetchBlogs now returns { success, data, nextCursor } OR throws
-      const response = await fetchBlogs(isInitial ? searchTerm : "", cursor, token, project_id);
+      const response = await blogsApi.getAll(token, { search: isInitial ? searchTerm : "", cursor, project_id: projectId });
       
-      if (response && response.success) {
+      if (response?.success) {
         const newBlogs = Array.isArray(response.data) ? response.data : [];
-        if (isInitial) {
-          setBlogs(newBlogs);
-        } else {
-          setBlogs(prev => [...prev, ...newBlogs]);
-        }
+        if (isInitial) setBlogs(newBlogs);
+        else setBlogs(prev => [...prev, ...newBlogs]);
         setNextCursor(response.nextCursor || null);
       } else {
-        throw new Error(response?.error || "Failed to parse API response.");
+        throw new Error(response?.error || "Error parsing index.");
       }
     } catch (err) {
-      console.error("[Blogs Page] Fetch Error:", err);
-      setError(err.message || "An error occurred while loading blogs.");
+      setError(err.message || "Failed to retrieve intelligence index.");
     } finally {
       if (isInitial) setLoading(false);
       else setLoadingMore(false);
     }
-  }, [searchTerm, user, project_id]);
+  }, [searchTerm, user, projectId]);
 
   useEffect(() => {
     if (user) {
-      const delayDebounceFn = setTimeout(() => {
-        loadBlogs(true);
-      }, 500);
-
-      return () => clearTimeout(delayDebounceFn);
+      const timer = setTimeout(() => loadBlogs(true), 500);
+      return () => clearTimeout(timer);
     }
   }, [searchTerm, loadBlogs, user]);
 
   return (
     <ProtectedRoute>
       <Navbar />
-      <main className="relative min-h-screen bg-[#020617] text-slate-100 px-6 py-24 sm:py-32">
-        {/* Background Aurora */}
-        <div className="aurora-glow w-[500px] h-[500px] -top-20 -left-20 bg-brand-500/5" />
-        <div className="aurora-glow w-[400px] h-[400px] bottom-0 -right-20 bg-purple-500/5" />
+      <main className="relative min-h-screen bg-[#020617] text-slate-100 px-6 py-24 sm:py-32 overflow-hidden">
+        <div className="aurora-glow w-[500px] h-[500px] -top-20 -left-20 bg-brand-500/10" />
+        <div className="aurora-glow w-[400px] h-[400px] bottom-0 -right-20 bg-purple-500/10" />
         <div className="absolute inset-0 bg-grid opacity-10 pointer-events-none" />
 
         <div className="relative z-10 max-w-7xl mx-auto space-y-20">
-          
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
-            <div className="space-y-6">
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="badge-premium"
-              >
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
+            <div className="space-y-4">
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="badge-premium">
                 Intelligence Library
               </motion.div>
-              <h1 className="text-5xl sm:text-7xl font-display font-black leading-[0.9] tracking-tighter gradient-text">
-                {project_id ? "Project " : "Your AI Engine "} <br />
-                <span className="brand-text">{project_id ? "Articles." : "Output."}</span>
+              <h1 className="text-4xl sm:text-6xl font-display font-black leading-none tracking-tight text-white shadow-sm">
+                {projectId ? "Project" : "Platform"} <span className="text-indigo-400">Index.</span>
               </h1>
+              <p className="text-sm font-medium text-slate-400 max-w-xl">
+                 Anatomy of generated growth assets, securely queried from the autonomous deployment engine.
+              </p>
             </div>
 
-            {/* Search Bar */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="w-full md:max-w-md"
-            >
-              <div className="glass-card flex items-center px-6 py-4 bg-slate-900/60 focus-within:ring-4 ring-brand-500/10 border-white/5 transition-all duration-500 pointer-events-auto shadow-inner">
-                <svg className="w-5 h-5 text-slate-500 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="w-full md:max-w-sm">
+              <div className="flex items-center px-5 py-4 bg-slate-900/80 border border-white/5 rounded-2xl focus-within:border-indigo-500 focus-within:ring-2 ring-indigo-500/20 transition-all shadow-inner">
+                <svg className="w-5 h-5 text-slate-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search articles..."
-                  className="bg-transparent border-none focus:ring-0 w-full text-slate-200 placeholder:text-slate-700 outline-none font-bold text-lg"
+                  placeholder="Query assets..."
+                  className="bg-transparent border-none text-white placeholder-slate-500 outline-none w-full text-sm font-bold"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -115,81 +97,38 @@ export default function BlogsPage() {
 
           <AnimatePresence mode="wait">
             {loading ? (
-              <motion.div 
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
-              >
-                {[...Array(6)].map((_, i) => (
-                  <BlogCardSkeleton key={i} />
-                ))}
+              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => <BlogCardSkeleton key={i} />)}
               </motion.div>
             ) : error ? (
-              <motion.div
-                key="error"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="glass-card p-12 text-center border-red-500/10"
-              >
-                <div className="text-4xl mb-4">⚠️</div>
-                <h3 className="text-xl font-bold text-red-200">{error}</h3>
-                <button onClick={() => loadBlogs(true)} className="mt-4 btn-secondary">Try Again</button>
+              <motion.div key="error" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-12 text-center border-red-500/20">
+                <p className="text-2xl mb-4">⚠️</p>
+                <h3 className="text-lg font-bold text-red-400 mb-4">{error}</h3>
+                <button onClick={() => loadBlogs(true)} className="btn-secondary px-6 py-2 text-xs">Retry Connection</button>
               </motion.div>
             ) : blogs.length === 0 ? (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="glass-card p-20 text-center space-y-6"
-              >
-                <div className="text-6xl">📥</div>
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-display font-bold text-white">Your library is empty.</h3>
-                  <p className="text-slate-400">Time to generate your first SEO-optimized masterpiece.</p>
-                </div>
-                <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
-                  <button 
-                    onClick={() => router.push("/keywords")}
-                    className="btn-brand px-8"
-                  >
-                    Launch AutoSEO 🚀
-                  </button>
-                  <button 
-                    onClick={() => router.push("/generate")}
-                    className="btn-secondary px-8 bg-slate-900 border-white/5"
-                  >
-                    Manual Studio
-                  </button>
+              <motion.div key="empty" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card text-center py-24 px-6 border-white/5">
+                <span className="text-5xl opacity-50 mb-6 block">📂</span>
+                <h3 className="text-xl font-display font-bold text-white mb-2">Registry is empty.</h3>
+                <p className="text-slate-400 text-sm mb-8">Execute programmatic generation to populate the index.</p>
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                  <button onClick={() => router.push("/keywords")} className="btn-brand">Initialize Pipeline</button>
+                  <button onClick={() => router.push("/generate")} className="btn-secondary">Studio Write</button>
                 </div>
               </motion.div>
             ) : (
-              <motion.div 
-                key="blogs"
-                className="space-y-12"
-              >
-                <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <motion.div key="blogs" className="space-y-12">
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {blogs.map((blog, i) => (
                     <BlogCard key={blog.id} blog={blog} index={i} />
                   ))}
                 </div>
 
                 {nextCursor && (
-                  <div className="flex justify-center pt-8">
-                    <button
-                      onClick={() => loadBlogs(false, nextCursor)}
-                      disabled={loadingMore}
-                      className="btn-secondary px-10 py-3 relative group overflow-hidden"
-                    >
-                      <span className={loadingMore ? "opacity-0" : "opacity-100"}>
-                        Load More Articles
-                      </span>
-                      {loadingMore && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-5 h-5 border-2 border-slate-400 border-t-white rounded-full animate-spin" />
-                        </div>
-                      )}
+                  <div className="flex justify-center pt-4">
+                    <button onClick={() => loadBlogs(false, nextCursor)} disabled={loadingMore} className="btn-secondary relative w-[200px]">
+                      <span className={loadingMore ? "opacity-0" : "opacity-100"}>Fetch Additional</span>
+                      {loadingMore && <div className="absolute inset-0 flex items-center justify-center"><div className="w-4 h-4 border-2 border-slate-500 border-t-white rounded-full animate-spin" /></div>}
                     </button>
                   </div>
                 )}

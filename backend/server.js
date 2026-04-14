@@ -1,293 +1,219 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const { config, initializeProductionConfig } = require('./src/config'); 
-const db = require('./src/services/sql.service');
-const blogRoutes = require('./src/routes/blog.routes.js');
-const keywordRoutes = require('./src/routes/keyword.routes.js');
-const projectRoutes = require('./src/routes/project.routes.js');
-const stripeRoutes = require('./src/routes/stripe.routes.js');
-const { apiLimiter } = require('./src/middleware/rateLimit');
-const { startAutoGenerateJob } = require('./src/jobs/autoGenerate.job');
-const { startSystemBlogJob } = require('./src/jobs/systemBlog.job');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { config, hydrateConfigWithSecrets } = require('./src/config');
+
+// ─── CRASH-ON-ERROR (ROBUST RESTART) ─────────────────────────────────────────
+// Catch unhandled exceptions, log them, and exit.
+// This allows container orchestrators (like Cloud Run) to restart the service,
+// which is a best practice for resilient applications.
+process.on('uncaughtException', (err, origin) => {
+  console.error(`[FATAL] Uncaught exception: ${err.message}`, {
+    error: err,
+    origin: origin,
+    stack: err.stack,
+  });
+  process.exit(1);
+});
+
+// Catch unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[FATAL] Unhandled Promise Rejection:', { reason, promise });
+  process.exit(1);
+});
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = config.port || 8080;
 
-// Required for Cloud Run to correctly identify user IPs for rate limiting
-app.set('trust proxy', 1);
+// ─── STARTUP (INSTANT PORT BINDING & ASYNC INIT) ─────────────────────────────
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log('\x1b[32m%s\x1b[0m', `[BOOT] Server listening on 0.0.0.0:${PORT}`);
+  initServices();
+});
 
-// 1. CORS CONFIGURATION (Must be first to handle preflights)
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+// ─── GLOBAL STATUS FLAGS ─────────────────────────────────────────────────────
+let dbStatus = 'INITIALIZING';
+let secretsStatus = 'INITIALIZING';
+
+// ─── HEALTH CHECKS (GLOBAL) ──────────────────────────────────────────────────
+app.get('/health', (req, res) => res.status(200).json({ 
+  status: 'UP', 
+  database: dbStatus,
+  secrets: secretsStatus, 
+  env: process.env.NODE_ENV 
+}));
+app.get('/', (req, res) => res.status(200).json({
+  status: 'UP',
+  message: 'Rank AI backend is running',
+  database: dbStatus,
+  secrets: secretsStatus,
+  env: process.env.NODE_ENV
 }));
 
-app.options("*", cors());
 
-// Raw Headers Fallback to guarantee CORS compliance
+// ─── TRUST PROXY ─────────────────────────────────────────────────────────────
+app.set('trust proxy', 1);
+
+// ─── MIDDLEWARE (BOOTSTRAP) ──────────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false
+}));
+app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
+
+// JSON body parsing — skip for Stripe webhook (needs raw body for signature verification)
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
+  if (req.originalUrl === '/api/stripe/webhook') return next();
+  express.json()(req, res, next);
+});
+app.use(express.urlencoded({ extended: true }));
+
+// ─── CORS CONFIGURATION ──────────────────────────────────────────────────────
+const defaultAllowedOrigins = [
+  'https://rankai.zorins.tech',
+  'https://www.rankai.zorins.tech',
+  'https://rank-ai-frontend.pages.dev',
+  'https://rank-ai-frontend-156538337442.us-central1.run.app'
+];
+
+const configuredOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+  : [];
+
+const allowedOrigins = [...defaultAllowedOrigins, ...configuredOrigins];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    const isDev = process.env.NODE_ENV !== 'production';
+    const isDomainAllowed = !origin || (
+      allowedOrigins.includes(origin) || 
+      /\.zorins\.tech$/.test(origin) || 
+      /\.pages\.dev$/.test(origin) ||
+      isDev
+    );
+    if (isDomainAllowed) callback(null, true);
+    else callback(null, new Error('Not allowed by CORS'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: true,
+  maxAge: 86400,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// ─── PATH HARDENING ──────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/api/')) {
+    // 308 Redirect preserves the original method (e.g. POST)
+    return res.redirect(308, req.url.replace('/api/api/', '/api/'));
   }
   next();
 });
 
-// 2. Standard Middlewares
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// 3. Rate Limiting (Applied AFTER CORS)
-app.use(apiLimiter);
+// ─── ROUTE REGISTRATION ──────────────────────────────────────────────────────
+const apiRoutes = [
+  { path: '/api/blogs', module: './src/routes/blog.routes' },
+  { path: '/api/projects', module: './src/routes/project.routes' },
+  { path: '/api/keywords', module: './src/routes/keyword.routes' },
+  { path: '/api/aeo', module: './src/routes/aeo.routes' },
+  { path: '/api/backlinks', module: './src/routes/backlink.routes' },
+  { path: '/api/stripe', module: './src/routes/stripe.routes' },
+  { path: '/api/growth-plan', module: './src/routes/growthPlan.routes' },
+  { path: '/api/publish', module: './src/routes/publish.routes' }
+];
 
-// Professional Logging Middleware
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
-  next();
-});
-
-// Health Check Endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    service: 'Rank AI SaaS Backend', 
-    project: config.gcpProjectId,
-    environment: process.env.NODE_ENV || 'development'
+console.log('[BOOT] Registering API routes...');
+try {
+  apiRoutes.forEach(route => {
+    app.use(route.path, require(route.module));
+    // console.log(`[BOOT] Registered: ${route.path}`);
   });
-});
+  console.log('[BOOT] All routes registered successfully.');
+} catch (routeErr) {
+  console.error(`[FATAL BOOT ERROR] Failed to register routes: ${routeErr.message}`);
+  console.error(routeErr.stack);
+  process.exit(1);
+}
 
-app.get('/health-db', async (req, res) => {
+
+
+/**
+ * Async Background Initialization
+ * Hydrates secrets and syncs DB without blocking the HTTP listener.
+ */
+
+async function initServices() {
   try {
-    const { rows } = await db.query('SELECT NOW()');
-    res.json({ dbTime: rows[0].now });
-  } catch (error) {
-    console.error('DB health check error:', error);
-    res.status(500).json({ error: 'Database connection error' });
-  }
-});
+    const { runMigrations } = require('./src/services/db.init');
 
-// Business Logic Routes (SaaS)
-app.use('/', blogRoutes);
-app.use('/keywords', keywordRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/stripe', stripeRoutes);
-
-// Compatibility fallback for root access
-app.get('/', (req, res) => {
-  res.redirect('/health');
-});
-
-// Final Catch-All for undefined routes
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// Global Error Handler
-app.use((err, req, res, next) => {
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({ success: false, error: 'CORS Error: Origin not allowed' });
-  }
-  console.error('[CRITICAL SERVER ERROR]:', err.stack);
-  res.status(500).json({ 
-    success: false, 
-    error: 'Internal Server Error',
-    // Only expose error details in development
-    ...(process.env.NODE_ENV !== 'production' && { message: err.message })
-  });
-});
-
-// ─── On-Boot Database Migration ─────────────────────────────────────────────
-async function runMigrations() {
-  try {
-    await db.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
-
-    // 1. Create Users Table (Stripe & Subscription Management)
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id                   TEXT PRIMARY KEY, -- Firebase UID
-        email                TEXT UNIQUE NOT NULL,
-        stripe_customer_id   TEXT,
-        subscription_status  TEXT DEFAULT 'trialing',
-        plan                 TEXT DEFAULT 'starter',
-        trial_ends_at        TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days'),
-        created_at           TIMESTAMPTZ DEFAULT NOW(),
-        updated_at           TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // 2. Create Blogs Table (Core Content)
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS blogs (
-        id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id          TEXT NOT NULL,
-        project_id       UUID,
-        title            TEXT NOT NULL,
-        content          TEXT NOT NULL,
-        meta_description TEXT,
-        keyword          TEXT,
-        image_url        TEXT,
-        slug             TEXT UNIQUE NOT NULL,
-        analysis         JSONB,
-        faq             JSONB,
-        status           TEXT DEFAULT 'draft',
-        created_at       TIMESTAMPTZ DEFAULT NOW(),
-        updated_at       TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    // 3. Create Projects Table
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS projects (
-        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id      TEXT NOT NULL,
-        website_url  TEXT NOT NULL,
-        niche_type   TEXT NOT NULL CHECK (niche_type IN ('preset', 'custom')),
-        niche_value  TEXT NOT NULL,
-        status       TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused')),
-        created_at   TIMESTAMPTZ DEFAULT NOW(),
-        updated_at   TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    await db.query(`CREATE INDEX IF NOT EXISTS projects_user_id_idx ON projects (user_id)`);
-
-    // 4. Update Keyword Research Table
-    await db.query(`ALTER TABLE keyword_research ADD COLUMN IF NOT EXISTS project_id UUID`);
-    
-    // 5. PERFORM DATA MIGRATION (Default Project for existing users)
-    console.log('[Migration] Checking for users needing a Default Project...');
-    
-    // Get unique users from both blogs and keyword_research who don't have a project yet
-    const { rows: orphanUsers } = await db.query(`
-      SELECT DISTINCT user_id FROM (
-        SELECT user_id FROM blogs WHERE project_id IS NULL
-        UNION
-        SELECT user_id FROM keyword_research WHERE project_id IS NULL
-      ) as orphans
-    `);
-
-    for (const { user_id } of orphanUsers) {
-      console.log(`[Migration] Creating Default Project for user: ${user_id}`);
-      const { rows: projects } = await db.query(`SELECT id FROM projects WHERE user_id = $1 LIMIT 1`, [user_id]);
-      
-      let projectId;
-      if (projects.length === 0) {
-        const { rows: [newProject] } = await db.query(`
-          INSERT INTO projects (user_id, website_url, niche_type, niche_value, status)
-          VALUES ($1, $2, $3, $4, $5)
-          RETURNING id
-        `, [user_id, 'https://default.com', 'preset', 'General', 'active']);
-        projectId = newProject.id;
-      } else {
-        projectId = projects[0].id;
+    // 1. Hydrate configurations from Secret Manager (Production only)
+    if (config.env === 'production') {
+      try {
+        await hydrateConfigWithSecrets();
+        console.log('[Secrets] Hydration successful.');
+        secretsStatus = 'LOADED';
+      } catch (e) {
+        console.error('[Secrets] Hydration failed:', e.message);
+        secretsStatus = `FAILED: ${e.message}`;
       }
-
-      await db.query(`UPDATE blogs SET project_id = $1 WHERE user_id = $2 AND project_id IS NULL`, [projectId, user_id]);
-      await db.query(`UPDATE keyword_research SET project_id = $1 WHERE user_id = $2 AND project_id IS NULL`, [projectId, user_id]);
+    } else {
+      secretsStatus = 'SKIPPED (DEV)';
     }
 
-    // 6. Finalize Constraints
+    // 2. Synchronize Database
     try {
-       await db.query(`ALTER TABLE blogs ALTER COLUMN project_id SET NOT NULL`);
-       await db.query(`ALTER TABLE blogs ADD CONSTRAINT blogs_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE`);
-       await db.query(`ALTER TABLE keyword_research ADD CONSTRAINT keyword_research_project_id_fkey FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE`);
-       console.log('[Migration] Multi-tenant project constraints enforced.');
-    } catch (constErr) {
-       console.warn('[Migration] Constraints already exist or table is empty during constraint phase.');
+      await runMigrations();
+      console.log('\x1b[32m%s\x1b[0m', '[DB] Connected and synchronized.');
+      dbStatus = 'CONNECTED';
+    } catch (dbErr) {
+      console.error('[DB] Migration failed:', dbErr.message);
+      dbStatus = `FAILED: ${dbErr.message}`;
     }
 
-    // 7. Update Keyword Research Table Structure
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS keyword_research (
-        id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id      TEXT NOT NULL,
-        niche        TEXT NOT NULL,
-        keyword      TEXT NOT NULL,
-        search_volume INT DEFAULT 0,
-        difficulty   TEXT DEFAULT 'medium',
-        intent       TEXT DEFAULT 'informational',
-        status       TEXT DEFAULT 'pending',
-        blog_id      UUID REFERENCES blogs(id) ON DELETE SET NULL,
-        created_at   TIMESTAMPTZ DEFAULT NOW(),
-        updated_at   TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    await db.query(`CREATE INDEX IF NOT EXISTS keyword_research_project_idx ON keyword_research (project_id)`);
+    // 3. Start Background Jobs
+    try {
+      const { startAutopilotJob } = require('./src/jobs/autopilot.job');
+      const { startSystemBlogJob } = require('./src/jobs/systemBlog.job');
+      startAutopilotJob();
+      startSystemBlogJob();
+    } catch (jobErr) {
+      console.error('[INIT ERROR] Job scheduler failure:', jobErr.message);
+    }
 
-    console.log('[Migration] Multi-tenant project system ready.');
-  } catch (err) {
-    console.error('[Migration] Error:', err.message);
+    console.log('[INIT] Background operations complete.');
+  } catch (fatalErr) {
+    console.error('[FATAL INIT ERROR]:', fatalErr.message, fatalErr.stack);
+    // If core initialization (like requiring modules) fails, exit.
+    process.exit(1);
   }
 }
 
-// Startup logic
-const startServer = async () => {
-  // Hydrate production secrets BEFORE initializing other services
-  await initializeProductionConfig();
 
-  const server = app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`\n============================================`);
-    console.log(`  Rank AI SaaS — UP & RUNNING on 0.0.0.0:${PORT}`);
-    console.log(`  Project: ${config.gcpProjectId}`);
-    console.log(`  Environment: ${config.env}`);
-    console.log(`  Modernized April 2026 (Gen AI SDK)`);
-    console.log(`============================================\n`);
-
-    await runMigrations();
-    startAutoGenerateJob();
-    startSystemBlogJob();
+// ─── ERROR FALLBACKS (Must be registered after routes) ────────────────────────
+app.use((req, res) => {
+  console.log(`[404] No route matched: ${req.method} ${req.url}`);
+  res.status(404).json({ 
+    success: false, 
+    error: `Route not found: ${req.method} ${req.url}`,
+    tip: "Ensure you are using exact paths like /api/blogs/generate"
   });
-
-  // Graceful Shutdown Handler
-  const shutdown = async (signal) => {
-    console.log(`\n[${signal}] Received. Shutting down Rank AI Backend...`);
-    
-    // Set a timeout to force shutdown if it hangs
-    const forceExit = setTimeout(() => {
-      console.error('  -> Could not close connections in time, forcing shut down.');
-      process.exit(1);
-    }, 5000);
-
-    try {
-      // 1. Stop accepting new requests
-      server.close(() => {
-        console.log('  -> Server (Express) closed.');
-      });
-
-      // 2. Clear Cron Jobs or ongoing tasks if possible
-      // (Assuming jobs have their own close/stop methods if needed)
-
-      // 3. Close Database Pool
-      if (db.pool) {
-        console.log('  -> Draining DB pool...');
-        await db.pool.end();
-        console.log('  -> DB pool drained.');
-      }
-
-      console.log('  -> Clean exit.');
-      clearTimeout(forceExit);
-      process.exit(0);
-    } catch (err) {
-      console.error('  -> Error during graceful shutdown:', err);
-      process.exit(1);
-    }
-  };
-
-  // Listen for termination signals
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-
-  // Graceful Port Management
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`\n[FATAL]: Port ${PORT} already in use. Please clear old processes.`);
-      process.exit(1);
-    }
+});
+app.use((err, req, res, next) => {
+  console.error('[SERVER ERROR]:', err.message);
+  res.status(err.message === 'Not allowed by CORS' ? 403 : 500).json({
+    success: false,
+    error: err.message || 'Internal Server Error'
   });
-};
+});
 
-startServer();
+
+// Graceful Shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down...');
+  server.close(() => process.exit(0));
+});

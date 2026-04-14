@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.log
+creds.json
+.git/
+.gitignore
+.gcloudignore
+.dockerignore
+scratch/

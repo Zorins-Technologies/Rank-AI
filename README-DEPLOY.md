@@ -24,6 +24,11 @@ This guide provides step-by-step instructions for deploying **Rank AI** to produ
 | `GENAI_API_KEY` | `AI...` | Gemini 1.5 Flash API Key |
 | `GOOGLE_CLOUD_CLIENT_EMAIL` | `account@...` | From your service account JSON |
 | `GOOGLE_CLOUD_PRIVATE_KEY` | `-----BEGIN...` | From your service account JSON (Ensure no extra quotes) |
+| `DB_USER` | `postgres` | Cloud SQL username |
+| `DB_PASSWORD` | `your-db-password` | Cloud SQL password |
+| `DB_NAME` | `your-db-name` | Cloud SQL database name |
+| `INSTANCE_CONNECTION_NAME` | `project:region:instance` | Cloud SQL connection string |
+| `USE_SECRET_MANAGER` | `false` | Set to `true` if using Secret Manager to fetch DB credentials |
 
 ---
 
@@ -60,11 +65,14 @@ If you prefer a scalable, serverless container environment, follow these steps:
      --image gcr.io/your-project-id/rank-ai-backend \
      --platform managed \
      --region us-central1 \
-     --allow-unauthenticated
+     --allow-unauthenticated \
+     --add-cloudsql-instances=your-project:us-central1:your-instance
    ```
 3. **Environment Variables**:
    You can set them in the Cloud Run Console or via the CLI:
-   - `GCP_PROJECT_ID`, `GENAI_API_KEY`, etc. (Same as Render List)
+   - `GCP_PROJECT_ID`, `GENAI_API_KEY`, `GCS_BUCKET_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `INSTANCE_CONNECTION_NAME`, `ALLOWED_ORIGINS`
+   - If you're using Google Secret Manager instead of direct env vars, set `USE_SECRET_MANAGER=true` and ensure the secrets exist with the names from `backend/src/services/secret.service.js`.
+   - For service account credentials, either supply a valid `GOOGLE_APPLICATION_CREDENTIALS_JSON`, or store `GOOGLE_CLOUD_PRIVATE_KEY` and `GOOGLE_CLOUD_CLIENT_EMAIL` as secrets. The backend now normalizes escaped newlines and removes extra surrounding quotes automatically.
 
 ---
 

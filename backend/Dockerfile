@@ -2,13 +2,14 @@
 FROM node:20-slim
 
 # Create and change to the app directory.
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Copy application dependency manifests to the container image.
 COPY package*.json ./
 
-# Install production dependencies.
-RUN npm ci --only=production
+# Install all dependencies (using npm install for better compatibility if lockfile was across platforms)
+# But npm ci is safer if lockfile is guaranteed to be correct.
+RUN npm install --production
 
 # Copy local code to the container image.
 COPY . .
@@ -16,9 +17,7 @@ COPY . .
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=8080
-
-# Service must listen on port 8080 by default for Cloud Run.
 EXPOSE 8080
 
 # Run the web service on container startup.
-CMD [ "npm", "start" ]
+CMD [ "node", "server.js" ]

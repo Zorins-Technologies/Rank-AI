@@ -5,9 +5,15 @@ export default async function sitemap() {
   // 1. Fetch all published blogs
   let blogs = [];
   try {
-    const res = await fetch(`${apiUrl}/blogs?status=published`, {
+    // Normalize URL construction to prevent /api/api duplication
+    const cleanBase = apiUrl.replace(/\/$/, "");
+    const endpoint = "/blogs?status=published";
+    const requestUrl = cleanBase.endsWith("/api") ? `${cleanBase}${endpoint}` : `${cleanBase}/api${endpoint}`;
+
+    const res = await fetch(requestUrl, {
       cache: "no-store",
     });
+
     const data = await res.json();
     if (data.success) {
       blogs = data.data;

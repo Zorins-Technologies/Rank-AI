@@ -5,9 +5,15 @@ import Navbar from "../../../components/Navbar";
 async function getBlog(slug) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   try {
-    const res = await fetch(`${apiUrl}/blogs/${slug}`, {
+    // Normalize URL construction to prevent /api/api duplication
+    const cleanBase = apiUrl.replace(/\/$/, "");
+    const endpoint = `/blogs/${slug}`;
+    const requestUrl = cleanBase.endsWith("/api") ? `${cleanBase}${endpoint}` : `${cleanBase}/api${endpoint}`;
+
+    const res = await fetch(requestUrl, {
       cache: "no-store",
     });
+
 
     if (!res.ok) {
       console.error(`[Server Fetch] Failed to fetch blog ${slug}:`, res.status);

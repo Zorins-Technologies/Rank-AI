@@ -1,5 +1,5 @@
 const { VertexAI } = require("@google-cloud/vertexai");
-const config = require("../config");
+const { config } = require("../config");
 
 const vertexAI = new VertexAI({
   project: config.gcpProjectId,
